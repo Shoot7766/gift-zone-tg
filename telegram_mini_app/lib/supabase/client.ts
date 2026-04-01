@@ -7,7 +7,8 @@ const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 export function getSupabaseBrowserClient() {
   if (!url || !key) {
     throw new Error(
-      "NEXT_PUBLIC_SUPABASE_URL va NEXT_PUBLIC_SUPABASE_ANON_KEY .env.local da bo'lishi kerak"
+      "Supabase: NEXT_PUBLIC_SUPABASE_URL va NEXT_PUBLIC_SUPABASE_ANON_KEY topilmadi. " +
+        "Mahalliy: .env yoki .env.local ga qo‘shing. Vercel: Environment Variables + Redeploy."
     );
   }
   return createClient(url, key);
