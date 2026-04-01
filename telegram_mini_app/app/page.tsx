@@ -16,6 +16,7 @@ import {
   fetchFeaturedProducts,
   fetchFeaturedShops,
 } from "@/lib/supabase/queries";
+import { supabaseFetchErrorMessage } from "@/lib/supabase/errorMessage";
 import { useTelegramUser } from "@/lib/telegram";
 import type { Product, Shop } from "@/types";
 import { ArrowRight } from "lucide-react";
@@ -46,11 +47,7 @@ export default function HomePage() {
         setShops(s);
       } catch (e) {
         if (!ok) return;
-        setErr(
-          e instanceof Error
-            ? e.message
-            : "Ma'lumot yuklanmadi. .env va Supabase RLS ni tekshiring."
-        );
+        setErr(supabaseFetchErrorMessage(e));
       } finally {
         if (ok) setLoading(false);
       }
