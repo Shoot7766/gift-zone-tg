@@ -59,6 +59,8 @@ Vercel loyihani **Next.js** emas, oddiy statik sayt deb olgan.
 
 **Preview vs Production:** `....vercel.app` dagi **asosiy production** domen va **Deployments** ichidagi **Preview** havola (masalan, `gift-zone-tg-git-xxx.vercel.app`) turli muhit. Telegramda Mini App URL sifatida **Production** deploy manzilini qo‘ying. Preview havolada ishlatilsa — u yerda **Preview** uchun belgilangan env lar bo‘lishi kerak (yoki ikkala muhitga ham o‘zgaruvchilarni qo‘shing).
 
+**Build logda** `⚠️ Vercel build: ... bo‘sh` degan ogohlantirish chiqsa — o‘zgaruvchilar build vaqtida kiritilmagan; deploy baribir tugaydi, lekin saytda Supabase banner qoladi. Env ni to‘g‘rilab qayta deploy qiling.
+
 ---
 
 ### D) Supabase RLS
