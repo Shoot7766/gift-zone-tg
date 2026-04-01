@@ -6,7 +6,11 @@ from telegram import Update
 from telegram.ext import ContextTypes
 
 from app import config, db
-from app.keyboards import mini_app_open_keyboard, phone_share_keyboard, role_reply_keyboard
+from app.keyboards import (
+    mini_app_open_keyboard,
+    phone_and_role_keyboard,
+    role_reply_keyboard,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -82,8 +86,8 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         context.user_data[EXPECT] = EXPECT_CONTACT_EXISTING
         context.user_data.pop(PENDING_PHONE, None)
         await msg.reply_html(
-            "Telefon raqamingizni yuborish uchun pastdagi tugmadan foydalaning.",
-            reply_markup=phone_share_keyboard(),
+            "Telefon raqamingizni yuboring, so‘ng <b>mijoz</b> yoki <b>sotuvchi</b>ni tanlang.",
+            reply_markup=phone_and_role_keyboard(),
         )
         return
 
@@ -100,8 +104,8 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     context.user_data.pop(PENDING_PHONE, None)
     await msg.reply_html(
         "Assalomu alaykum! Gift Zone'ga xush kelibsiz.\n\n"
-        "Davom etish uchun telefon raqamingizni yuboring.",
-        reply_markup=phone_share_keyboard(),
+        "Telefon raqamingizni yuboring va rol tanlang.",
+        reply_markup=phone_and_role_keyboard(),
     )
 
 
@@ -229,8 +233,14 @@ async def handle_text_message(update: Update, context: ContextTypes.DEFAULT_TYPE
         return
 
     if expect in (EXPECT_CONTACT, EXPECT_CONTACT_EXISTING):
+        if role:
+            await msg.reply_html(
+                "Avval «📱 Telefon raqamni yuborish» tugmasi orqali raqamingizni yuboring, "
+                "keyin «🛍 Mijoz» yoki «🏪 Sotuvchi»ni bosing."
+            )
+            return
         await msg.reply_html(
-            "Iltimos, pastdagi «📱 Telefon raqamni yuborish» tugmasidan foydalaning."
+            "Iltimos, «📱 Telefon raqamni yuborish» tugmasidan foydalaning."
         )
         return
 

@@ -11,6 +11,17 @@ def phone_share_keyboard() -> ReplyKeyboardMarkup:
     )
 
 
+def phone_and_role_keyboard() -> ReplyKeyboardMarkup:
+    """/start: telefon + mijoz/sotuvchi bir ekranda (avval telefon, keyin rol)."""
+    return ReplyKeyboardMarkup(
+        [
+            [KeyboardButton("📱 Telefon raqamni yuborish", request_contact=True)],
+            [KeyboardButton("🛍 Mijoz"), KeyboardButton("🏪 Sotuvchi")],
+        ],
+        resize_keyboard=True,
+    )
+
+
 def role_reply_keyboard() -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(
         [
