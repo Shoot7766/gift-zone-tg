@@ -130,15 +130,12 @@ def format_shop_line(shop: dict[str, Any], index: int) -> str:
 
 
 def format_welcome_header(first_name: str | None) -> str:
+    """Eski modullar uchun qisqa sarlavha (bot asosan mini ilovaga yo‘naltiradi)."""
     if first_name and str(first_name).strip():
         who = _escape_html(str(first_name).strip())
     else:
         who = "mehmon"
-    return (
-        f"Assalomu alaykum, <b>{who}</b>! 👋\n\n"
-        f"<b>Gift Zone</b> — sizning xarid yordamchingiz.\n"
-        f"Sovg'a, gul, shar, tort va bezaklarni bir necha soniyada topamiz."
-    )
+    return f"Assalomu alaykum, <b>{who}</b>! 👋\n\n<b>Gift Zone</b>."
 
 
 def format_search_intro(query_hint: str) -> str:
