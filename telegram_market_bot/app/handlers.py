@@ -32,6 +32,20 @@ LABEL_SOTUVCHI = "🏪 Sotuvchi"
 ONBOARDING_MSG_IDS = "onboarding_msg_ids"
 MSG_ROLE_PROMPT = "Rahmat, xizmatimizni tanlang."
 
+
+def _normalize_phone_input(text: str) -> str | None:
+    """Bo'shliq va tireni olib tashlab, 9–15 raqam (+ ixtiyoriy boshida)."""
+    compact = "".join(c for c in text.strip() if c.isdigit() or c == "+")
+    if not compact:
+        return None
+    if compact.count("+") > 1 or ("+" in compact and not compact.startswith("+")):
+        return None
+    digits = "".join(c for c in compact if c.isdigit())
+    if len(digits) < 9 or len(digits) > 15:
+        return None
+    return f"+{digits}" if compact.startswith("+") else digits
+
+
 HELP_HTML = (
     "<b>Gift Zone — kirish boti</b>\n\n"
     "/start — ro'yxatdan o'tish yoki mini ilovani ochish\n\n"
@@ -175,6 +189,64 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await update.message.reply_html(HELP_HTML)
 
 
+async def _process_onboarding_phone(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+    phone: str,
+    *,
+    remove_incoming_message: bool,
+) -> bool:
+    """
+    Telefon qabul qilindi (kontakt yoki matn).
+    True = onboarding bosqichi qayta ishlandi; False = /start kutilmoqda.
+    """
+    u = update.effective_user
+    msg = update.message
+    if not u or not msg:
+        return False
+    expect = context.user_data.get(EXPECT)
+    chat_id = msg.chat_id
+
+    if expect == EXPECT_CONTACT:
+        await _delete_tracked_chat_messages(context, chat_id)
+        context.user_data[PENDING_PHONE] = phone
+        context.user_data[EXPECT] = EXPECT_ROLE
+        sent = await msg.reply_html(MSG_ROLE_PROMPT, reply_markup=role_reply_keyboard())
+        if remove_incoming_message:
+            await _try_delete_message(context, chat_id, msg.message_id)
+        context.user_data[ONBOARDING_MSG_IDS] = [sent.message_id]
+        logger.info("onboarding: telefon qabul (yangi user), telegram_id=%s", u.id)
+        return True
+
+    if expect == EXPECT_CONTACT_EXISTING:
+        updated = db.update_user_phone(u.id, phone)
+        if not updated:
+            await msg.reply_html(
+                "Ma'lumotni saqlab bo'lmadi. Keyinroq /start orqali qayta urinib ko'ring."
+            )
+            return True
+        await _delete_tracked_chat_messages(context, chat_id)
+        if db.user_registration_complete(updated):
+            await msg.reply_html(
+                _success_message(),
+                reply_markup=mini_app_open_keyboard(config.MINI_APP_URL),
+            )
+            if remove_incoming_message:
+                await _try_delete_message(context, chat_id, msg.message_id)
+            _clear_onboarding(context)
+            logger.info("onboarding: telefon + ro'yxat tugallandi, telegram_id=%s", u.id)
+            return True
+        context.user_data[EXPECT] = EXPECT_ROLE_EXISTING
+        sent = await msg.reply_html(MSG_ROLE_PROMPT, reply_markup=role_reply_keyboard())
+        if remove_incoming_message:
+            await _try_delete_message(context, chat_id, msg.message_id)
+        context.user_data[ONBOARDING_MSG_IDS] = [sent.message_id]
+        logger.info("onboarding: telefon saqlandi, rol kutilmoqda, telegram_id=%s", u.id)
+        return True
+
+    return False
+
+
 async def handle_contact(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if not update.effective_user or not update.message or not update.message.contact:
         return
@@ -195,42 +267,18 @@ async def handle_contact(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         await msg.reply_html("Telefon raqamini o'qib bo'lmadi. Qayta urinib ko'ring.")
         return
 
-    chat_id = msg.chat_id
-
-    if expect == EXPECT_CONTACT:
-        await _delete_tracked_chat_messages(context, chat_id)
-        context.user_data[PENDING_PHONE] = phone
-        context.user_data[EXPECT] = EXPECT_ROLE
-        sent = await msg.reply_html(MSG_ROLE_PROMPT, reply_markup=role_reply_keyboard())
-        await _try_delete_message(context, chat_id, msg.message_id)
-        context.user_data[ONBOARDING_MSG_IDS] = [sent.message_id]
+    if await _process_onboarding_phone(
+        update, context, phone, remove_incoming_message=True
+    ):
         return
 
-    if expect == EXPECT_CONTACT_EXISTING:
-        updated = db.update_user_phone(u.id, phone)
-        if not updated:
-            await msg.reply_html(
-                "Ma'lumotni saqlab bo'lmadi. Keyinroq /start orqali qayta urinib ko'ring."
-            )
-            return
-        await _delete_tracked_chat_messages(context, chat_id)
-        if db.user_registration_complete(updated):
-            await msg.reply_html(
-                _success_message(),
-                reply_markup=mini_app_open_keyboard(config.MINI_APP_URL),
-            )
-            await _try_delete_message(context, chat_id, msg.message_id)
-            _clear_onboarding(context)
-            return
-        context.user_data[EXPECT] = EXPECT_ROLE_EXISTING
-        sent = await msg.reply_html(MSG_ROLE_PROMPT, reply_markup=role_reply_keyboard())
-        await _try_delete_message(context, chat_id, msg.message_id)
-        context.user_data[ONBOARDING_MSG_IDS] = [sent.message_id]
-        return
-
-    # Kutilmagan kontakt
+    logger.warning(
+        "kontakt kutilmagan holatda: expect=%s telegram_id=%s",
+        expect,
+        u.id,
+    )
     await msg.reply_html(
-        "Avval /start buyrug'ini yuboring."
+        "Avval /start buyrug'ini yuboring — keyin telefon yuboring."
     )
 
 
@@ -311,8 +359,16 @@ async def handle_text_message(update: Update, context: ContextTypes.DEFAULT_TYPE
                 "keyin «🛍 Mijoz» yoki «🏪 Sotuvchi»ni bosing."
             )
             return
+        phone_text = _normalize_phone_input(raw)
+        if phone_text:
+            if await _process_onboarding_phone(
+                update, context, phone_text, remove_incoming_message=True
+            ):
+                return
         await msg.reply_html(
-            "Iltimos, «📱 Telefon raqamni yuborish» tugmasidan foydalaning."
+            "Iltimos, «📱 Telefon raqamni yuborish» tugmasidan foydalaning "
+            "yoki raqamingizni yozing: masalan <code>+998901234567</code> yoki <code>998901234567</code>.\n\n"
+            "Agar javob kelmasa — avval <b>/start</b> yuboring."
         )
         return
 

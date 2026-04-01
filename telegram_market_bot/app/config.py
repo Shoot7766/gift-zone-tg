@@ -10,7 +10,15 @@ from dotenv import load_dotenv
 _env_path = Path(__file__).resolve().parent.parent / ".env"
 load_dotenv(_env_path)
 
-TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
+
+def _normalize_bot_token(raw: str) -> str:
+    t = raw.strip().strip('"').strip("'")
+    if t.lower().startswith("bot "):
+        t = t[4:].strip()
+    return t
+
+
+TELEGRAM_BOT_TOKEN = _normalize_bot_token(os.getenv("TELEGRAM_BOT_TOKEN", ""))
 SUPABASE_URL = os.getenv("SUPABASE_URL", "").strip()
 SUPABASE_KEY = os.getenv("SUPABASE_KEY", "").strip()
 
@@ -24,7 +32,7 @@ for part in _raw_admins.replace(" ", "").split(","):
     if part.isdigit():
         ADMIN_TELEGRAM_IDS.add(int(part))
 
-# Eski modullar (ai.py, seller_flow) uchun ixtiyoriy — bot ishga tushirishda talab qilinmaydi
+# Legacy modullar (legacy/ papkasi) uchun ixtiyoriy — asosiy bot talab qilmaydi
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "").strip()
 OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini").strip()
 PRODUCT_SEARCH_LIMIT = int(os.getenv("PRODUCT_SEARCH_LIMIT", "10"))

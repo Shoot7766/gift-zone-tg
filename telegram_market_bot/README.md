@@ -1,85 +1,37 @@
 # Gift Zone — Telegram kirish boti (Python)
 
-Bu bot **Telegram Mini App** bozoriga kirish uchun soddalashtirilgan: foydalanuvchi telefon raqamini yuboradi, **mijoz** yoki **sotuvchi** sifatida tanlanadi, ma’lumotlar **Supabase** `users` jadvaliga yoziladi, so‘ng **mini ilovani ochish** tugmasi ko‘rsatiladi.
+Botning vazifasi: **ro‘yxatdan o‘tish** (telefon + mijoz/sotuvchi), ma’lumotni **Supabase** `users` jadvaliga yozish, **mini ilovani ochish** tugmasi.
 
-Barcha katalog, qidiruv va do‘kon boshqaruvi **mini ilovada**; bot faqat ro‘yxatdan o‘tish va yo‘l-yo‘riq uchun.
+Bozor, qidiruv, do‘kon boshqaruvi **mini ilovada**; bu bot faqat kirish.
 
-## Texnologiyalar
-
-- **Python**, **python-telegram-bot** (polling)
-- **Supabase** (PostgreSQL)
-- **python-dotenv** (`.env`)
-
-## Loyiha tuzilmasi
+## Tuzilma
 
 ```
 telegram_market_bot/
   app/
-    bot.py       # Faqat kerakli handlerlar
-    config.py    # .env (token, Supabase, MINI_APP_URL)
-    db.py        # Supabase: foydalanuvchi, ro‘yxatdan o‘tish
-    handlers.py  # /start, kontakt, rol, matn
-    keyboards.py # Telefon, rol, Web App tugmasi
-    ...          # admin_handlers, callbacks, seller_flow, ai — hozir bot ulanmagan
+    bot.py        # Polling, bitta nusxa qulfi, webhook tozalash
+    config.py     # .env
+    db.py         # Supabase (users + umumiy jadvallar)
+    handlers.py   # /start, telefon, rol, /help
+    keyboards.py  # Reply: telefon, mijoz/sotuvchi, Web App
+    utils.py      # Legacy skriptlar uchun yordam (asosiy bot ishlatmaydi)
+  legacy/         # Eski bozor modullari — bot ulanmaydi
   sql/
-    schema.sql              # Yangi o‘rnatish
-    migration_v4_onboarding.sql  # Mavjud bazaga telefon + is_registered
-    ...
   main.py
   requirements.txt
   .env.example
 ```
 
-## Ro‘yxatdan o‘tish qanday ishlaydi
+## Oqim (o‘zbekcha matnlar)
 
-1. Foydalanuvchi **`/start`** yuboradi.
-2. Agar bazada **telefon + rol** (mijoz/sotuvchi/admin) to‘liq bo‘lmasa, bot **«📱 Telefon raqamni yuborish»** tugmasi bilan kontaktni so‘raydi (faqat kontakt qabul qilinadi).
-3. Kontakt kelgach, bot **«🛍 Mijoz»** yoki **«🏪 Sotuvchi»** tugmalarini beradi.
-4. Tanlov **`customer`** yoki **`seller`** qiymati sifatida `users.role` ga yoziladi; telefon **`users.phone_number`** ga saqlanadi; **`is_registered`** `true` bo‘ladi.
-5. Yakunda **«🚀 Gift Zone'ni ochish»** tugmasi chiqadi — bu Telegram **Web App** (`MINI_APP_URL`).
+1. **`/start`** — qisqa xush kelibsiz, **telefon tugmasi** + **🛍 Mijoz** / **🏪 Sotuvchi** (bir klaviaturada).
+2. **Telefon** — **kontakt tugmasi** yoki **matn** (`+998901234567` yoki `998901234567`).
+3. **«Rahmat, xizmatimizni tanlang.»** — faqat rol tugmalari.
+4. Yakun — **«🚀 Gift Zone'ni ochish»** (`MINI_APP_URL`, HTTPS).
 
-Agar foydalanuvchi allaqachon ro‘yxatdan o‘tgan bo‘lsa, qayta telefon so‘ralmaydi; qisqa **xush kelibsiz** va mini ilova tugmasi beriladi.
+Ro‘yxatdan o‘tgan foydalanuvchi: qisqa xush kelibsiz + mini ilova tugmasi.
 
-Telefon bor, rol yo‘q (kam uchraydigan holat) — faqat rol tanlanadi.
-
-## Telefon raqami
-
-Raqam faqat **kontakt yuborish** orqali olinadi (matn ko‘rinishida yozilgan raqam qabul qilinmaydi). Boshqa odamning kontakti bo‘lsa (`contact.user_id` boshqacha), bot xabar beradi.
-
-## Rol qiymatlari
-
-| Tugma        | Bazadagi `role` |
-|-------------|------------------|
-| 🛍 Mijoz    | `customer`       |
-| 🏪 Sotuvchi | `seller`         |
-
-`admin` roli faqat ma’lumotlar bazasida / boshqa vositalar orqali qo‘yilishi mumkin; bot faqat mijoz va sotuvchini tanlaydi.
-
-## Mini ilova manzili qayerda
-
-1. **`.env`** da **`MINI_APP_URL`** — to‘liq **HTTPS** manzil (masalan, Vercel’dagi Next.js mini app).
-2. Telegram **@BotFather** da bot sozlamalarida **Mini App / Menu Button** uchun ham shu domen va URL mos kelishi kerak (Telegram talabi).
-
-`MINI_APP_URL` bo‘lmasa yoki `https://` emas bo‘lsa, bot ishga tushmaydi (`validate_config`).
-
-## Qaytgan foydalanuvchilar
-
-`/start` da `users` qatorida **`phone_number`** to‘ldirilgan va **`role`** `customer` / `seller` / `admin` bo‘lsa, ro‘yxatdan o‘tgan hisoblanadi — bot darhol **mini ilovani ochish** tugmasini beradi va profil maydonlarini (username, ism) yangilab qo‘yadi.
-
-## 1. Supabase
-
-1. [supabase.com](https://supabase.com) da loyiha.
-2. **Project Settings → API**: `SUPABASE_URL`, **service_role** secret → `SUPABASE_KEY` (faqat serverda).
-
-## 2. SQL
-
-- **Yangi loyiha:** `sql/schema.sql` ni bir marta ishga tushiring (ichida `users` uchun `phone_number`, `is_registered`, `updated_at` bor).
-- **Mavjud baza (oldingi versiya):** `sql/migration_v4_onboarding.sql` ni ishga tushiring.
-- Namuna ma’lumot: `sql/seed.sql` (ixtiyoriy).
-
-## 3. `.env`
-
-`.env.example` ni nusxalab `.env` qiling:
+## `.env`
 
 | O‘zgaruvchi | Ma’nosi |
 |-------------|---------|
@@ -88,34 +40,48 @@ Raqam faqat **kontakt yuborish** orqali olinadi (matn ko‘rinishida yozilgan ra
 | `SUPABASE_KEY` | **service_role** secret |
 | `MINI_APP_URL` | Mini app **https://** manzili |
 
-## 4. O‘rnatish va ishga tushirish
+## SQL
+
+- Yangi baza: `sql/schema.sql`
+- Eski bazaga telefon / `is_registered`: `sql/migration_v4_onboarding.sql`
+
+## Ishga tushirish
 
 ```bash
 cd telegram_market_bot
 python -m venv .venv
-```
-
-Windows (PowerShell):
-
-```powershell
-.\.venv\Scripts\Activate.ps1
+.\.venv\Scripts\Activate.ps1   # Windows
 pip install -r requirements.txt
 python main.py
 ```
 
-Python **3.10+** tavsiya etiladi.
+## Muhim
+
+- **Bitta polling** — ikki `main.py` bir token bilan `/start` va telefon javoblarini **ikki marta** yoki **yo‘q** qiladi. `.telegram_bot_single.lock` bitta mashinada ikkinchi nusxani to‘xtatadi; **VPS + uy** ikkalasida ham bot bo‘lmasin.
+- **Webhook** ishga tushganda avtomatik o‘chiriladi (polling bilan aralashmasin).
+
+## Qayerdan bilaman (eski / ikkinchi javob kimdan?)
+
+1. **Skript** (`.env` to‘ldirilgan bo‘lsin):
+
+   ```bash
+   cd telegram_market_bot
+   py -3 scripts/check_telegram.py
+   ```
+
+   Chiqadi: bot `@username`, **webhook URL** (bo‘sh emas bo‘lsa — shu server ham xabarlarni oladi).
+
+2. **Qo‘lda brauzer** (tokenni hech kimga bermang):
+
+   `https://api.telegram.org/bot<TOKENINGIZ>/getWebhookInfo`  
+   `url` maydoni bo‘sh bo‘lmasa — webhook ishlayapti.
+
+3. **Windows**: Vazifalar boshqaruvchisida `python` / `py` jarayonlari — ikkita `main.py` bormi.
+
+4. **VPS / hosting** — shu token bilan avval bot qo‘ygan bo‘lsangiz, u yerda ham to‘xtating yoki yangilang.
+
+5. **Aniq ajratish**: @BotFather → **Revoke** token → yangi tokenni **faqat bitta** joydagi `.env` ga yozing (eski hamma joy to‘xtaydi).
 
 ## Xavfsizlik
 
-- `.env` ni git’ga qo‘shmang.
-- `SUPABASE_KEY` faqat serverda saqlang.
-
-## Muammolar
-
-- **Bot ishga tushmaydi, MINI_APP_URL xato:** manzil `https://` bilan boshlanishi kerak.
-- **Supabase xatoliklari:** `SUPABASE_URL` / `SUPABASE_KEY` (service_role) ni tekshiring.
-- **Mini ilova ochilmaydagi:** BotFather’da domen tasdiqlanganmi va URL bir xilmi.
-
-## Eslatma
-
-`app/admin_handlers.py`, `callbacks.py`, `seller_flow.py`, `ai.py` fayllari repozitoriyda saqlanishi mumkin, lekin **joriy `bot.py` ularni ulanmaydi** — barcha bozor funksiyalari mini ilovaga ko‘chirilgan.
+`.env` va `SUPABASE_KEY` ni ochiq qilmang.

@@ -1,12 +1,20 @@
 # Gift Zone (monorepo)
 
-- **`telegram_market_bot/`** — Python Telegram bot  
-- **`telegram_mini_app/`** — Next.js Telegram Mini App (Vercel shu yerga qarashi kerak)
+| Papka | Vazifa |
+|--------|--------|
+| **`telegram_market_bot/`** | Python kirish boti — ro‘yxatdan o‘tish, Supabase, mini ilovaga tugma. **Batafsil:** `telegram_market_bot/README.md` |
+| **`telegram_mini_app/`** | Next.js Telegram Mini App (o‘zgartirmasdan shu papkada) |
 
-## Vercel 404 bo‘lsa
+## Botni ishga tushirish
 
-Vercel loyihasida **Root Directory** = **`telegram_mini_app`** bo‘lishi shart.
+```bash
+cd telegram_market_bot
+pip install -r requirements.txt
+python main.py
+```
 
-**Vercel → Project (gift-zone-tg) → Settings → General → Root Directory → Edit →** yozing: `telegram_mini_app` → **Save** → **Deployments → Redeploy**.
+`.env` ni `telegram_market_bot/.env.example` dan nusxalab to‘ldiring.
 
-Batafsil: `telegram_mini_app/VERCEL.md`
+## Mini app (Vercel)
+
+Vercel **Root Directory** = `telegram_mini_app` bo‘lishi kerak. Qo‘llanma: `telegram_mini_app/VERCEL.md` (mini ilova papkasidagi fayl).
