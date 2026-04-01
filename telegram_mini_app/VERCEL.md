@@ -57,6 +57,8 @@ Vercel loyihani **Next.js** emas, oddiy statik sayt deb olgan.
 
 3. **Save** dan keyin **Redeploy** (env o‘zgarishlari eski deployda bo‘lmasligi mumkin).
 
+**Preview vs Production:** `....vercel.app` dagi **asosiy production** domen va **Deployments** ichidagi **Preview** havola (masalan, `gift-zone-tg-git-xxx.vercel.app`) turli muhit. Telegramda Mini App URL sifatida **Production** deploy manzilini qo‘ying. Preview havolada ishlatilsa — u yerda **Preview** uchun belgilangan env lar bo‘lishi kerak (yoki ikkala muhitga ham o‘zgaruvchilarni qo‘shing).
+
 ---
 
 ### D) Supabase RLS
