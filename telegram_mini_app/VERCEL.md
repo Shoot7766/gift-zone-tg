@@ -53,7 +53,7 @@ Vercel loyihani **Next.js** emas, oddiy statik sayt deb olgan.
 | Name | Qiymat |
 |------|--------|
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase Project URL |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | **anon public** kalit (service_role emas!) |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | **anon public** kalit (service_role emas!) — brauzerda maxfiy kalit ishlatsangiz, Supabase «Forbidden use of secret API key in browser» beradi. |
 
 3. **Save** dan keyin **Redeploy** (env o‘zgarishlari eski deployda bo‘lmasligi mumkin).
 
