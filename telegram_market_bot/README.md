@@ -1,12 +1,13 @@
-# Telegram marketplace yordamchi boti (Python)
+# Gift Zone — Telegram kirish boti (Python)
 
-O'zbek tilida ishlaydigan Telegram bot: foydalanuvchi so'rovini AI yordamida tahlil qiladi, Supabase'dagi mahsulotlarni qidiradi va tavsiyalar beradi.
+Bu bot **Telegram Mini App** bozoriga kirish uchun soddalashtirilgan: foydalanuvchi telefon raqamini yuboradi, **mijoz** yoki **sotuvchi** sifatida tanlanadi, ma’lumotlar **Supabase** `users` jadvaliga yoziladi, so‘ng **mini ilovani ochish** tugmasi ko‘rsatiladi.
+
+Barcha katalog, qidiruv va do‘kon boshqaruvi **mini ilovada**; bot faqat ro‘yxatdan o‘tish va yo‘l-yo‘riq uchun.
 
 ## Texnologiyalar
 
 - **Python**, **python-telegram-bot** (polling)
 - **Supabase** (PostgreSQL)
-- **OpenAI API** (faqat qidiruv parametrlarini ajratish uchun — mahsulotlar ixtiro qilinmaydi)
 - **python-dotenv** (`.env`)
 
 ## Loyiha tuzilmasi
@@ -14,126 +15,107 @@ O'zbek tilida ishlaydigan Telegram bot: foydalanuvchi so'rovini AI yordamida tah
 ```
 telegram_market_bot/
   app/
-    bot.py            # Application
-    config.py         # .env
-    db.py             # Supabase (qidiruv, VIP tartib, admin, saqlanganlar)
-    ai.py             # OpenAI + fallback
-    handlers.py       # Buyruqlar va matnli qidiruv
-    callbacks.py      # Inline tugmalar
-    keyboards.py      # Klaviaturalar
-    admin_handlers.py # /admin, /add_shop, ...
-    utils.py          # HTML formatlash
+    bot.py       # Faqat kerakli handlerlar
+    config.py    # .env (token, Supabase, MINI_APP_URL)
+    db.py        # Supabase: foydalanuvchi, ro‘yxatdan o‘tish
+    handlers.py  # /start, kontakt, rol, matn
+    keyboards.py # Telefon, rol, Web App tugmasi
+    ...          # admin_handlers, callbacks, seller_flow, ai — hozir bot ulanmagan
   sql/
-    schema.sql               # Jadvalar (yangi o'rnatish)
-    migration_v2_premium.sql # Eski bazaga ustunlar + user_favorites
-    seed.sql                 # Namuna ma'lumotlar
+    schema.sql              # Yangi o‘rnatish
+    migration_v4_onboarding.sql  # Mavjud bazaga telefon + is_registered
+    ...
   main.py
   requirements.txt
   .env.example
 ```
 
-## 1. Supabase loyihasini yaratish
+## Ro‘yxatdan o‘tish qanday ishlaydi
 
-1. [supabase.com](https://supabase.com) da yangi loyiha yarating.
-2. **Project Settings → API** bo'limidan:
-   - **Project URL** (`SUPABASE_URL`)
-   - **service_role** **secret** kalit (`SUPABASE_KEY`) — faqat serverda, hech kimga ochiq qilmang.
+1. Foydalanuvchi **`/start`** yuboradi.
+2. Agar bazada **telefon + rol** (mijoz/sotuvchi/admin) to‘liq bo‘lmasa, bot **«📱 Telefon raqamni yuborish»** tugmasi bilan kontaktni so‘raydi (faqat kontakt qabul qilinadi).
+3. Kontakt kelgach, bot **«🛍 Mijoz»** yoki **«🏪 Sotuvchi»** tugmalarini beradi.
+4. Tanlov **`customer`** yoki **`seller`** qiymati sifatida `users.role` ga yoziladi; telefon **`users.phone_number`** ga saqlanadi; **`is_registered`** `true` bo‘ladi.
+5. Yakunda **«🚀 Gift Zone'ni ochish»** tugmasi chiqadi — bu Telegram **Web App** (`MINI_APP_URL`).
 
-## 2. SQL fayllarni ishga tushirish
+Agar foydalanuvchi allaqachon ro‘yxatdan o‘tgan bo‘lsa, qayta telefon so‘ralmaydi; qisqa **xush kelibsiz** va mini ilova tugmasi beriladi.
 
-1. Supabase konsolida **SQL Editor** ni oching.
-2. `sql/schema.sql` ichidagi barcha matnni nusxalab, **Run** qiling (bir marta).
-3. Agar loyiha **oldingi** versiya bo'lsa (do'konlarda `subscription_type` yo'q bo'lsa), `sql/migration_v2_premium.sql` ni ishga tushiring.
-4. Keyin `sql/seed.sql` ni ishga tushiring (namuna do'konlar va mahsulotlar).
+Telefon bor, rol yo‘q (kam uchraydigan holat) — faqat rol tanlanadi.
 
-Agar seed'ni qayta tozalab yuklamoqchi bo'lsangiz, `seed.sql` dagi `truncate` qatorlaridagi izohlarni olib tashlang — ehtiyotkorlik bilan (barcha qatorlar o'chadi).
+## Telefon raqami
 
-## 3. `.env` fayl
+Raqam faqat **kontakt yuborish** orqali olinadi (matn ko‘rinishida yozilgan raqam qabul qilinmaydi). Boshqa odamning kontakti bo‘lsa (`contact.user_id` boshqacha), bot xabar beradi.
 
-1. `telegram_market_bot` papkasida `.env` yarating (`.env.example` ni nusxalab nomini `.env` qiling).
-2. Quyidagi o'zgaruvchilarni to'ldiring:
+## Rol qiymatlari
 
-| O'zgaruvchi | Qayerdan |
-|-------------|----------|
-| `TELEGRAM_BOT_TOKEN` | Telegram **@BotFather** |
-| `SUPABASE_URL` | Supabase loyiha URL |
-| `SUPABASE_KEY` | Supabase **service_role** secret |
-| `OPENAI_API_KEY` | OpenAI API kaliti |
-| `ADMIN_TELEGRAM_IDS` | (ixtiyoriy) Sizning Telegram raqamingiz — `/admin` va boshqa admin buyruqlar uchun |
+| Tugma        | Bazadagi `role` |
+|-------------|------------------|
+| 🛍 Mijoz    | `customer`       |
+| 🏪 Sotuvchi | `seller`         |
 
-**Muhim:** `SUPABASE_KEY` sifatida **service_role** kalitini qo'ying. `schema.sql` da RLS yoqilgan; anon kalit bilan bot jadvalga yozolmaysiz.
+`admin` roli faqat ma’lumotlar bazasida / boshqa vositalar orqali qo‘yilishi mumkin; bot faqat mijoz va sotuvchini tanlaydi.
 
-## 4. Virtual muhit va kutubxonalar
+## Mini ilova manzili qayerda
+
+1. **`.env`** da **`MINI_APP_URL`** — to‘liq **HTTPS** manzil (masalan, Vercel’dagi Next.js mini app).
+2. Telegram **@BotFather** da bot sozlamalarida **Mini App / Menu Button** uchun ham shu domen va URL mos kelishi kerak (Telegram talabi).
+
+`MINI_APP_URL` bo‘lmasa yoki `https://` emas bo‘lsa, bot ishga tushmaydi (`validate_config`).
+
+## Qaytgan foydalanuvchilar
+
+`/start` da `users` qatorida **`phone_number`** to‘ldirilgan va **`role`** `customer` / `seller` / `admin` bo‘lsa, ro‘yxatdan o‘tgan hisoblanadi — bot darhol **mini ilovani ochish** tugmasini beradi va profil maydonlarini (username, ism) yangilab qo‘yadi.
+
+## 1. Supabase
+
+1. [supabase.com](https://supabase.com) da loyiha.
+2. **Project Settings → API**: `SUPABASE_URL`, **service_role** secret → `SUPABASE_KEY` (faqat serverda).
+
+## 2. SQL
+
+- **Yangi loyiha:** `sql/schema.sql` ni bir marta ishga tushiring (ichida `users` uchun `phone_number`, `is_registered`, `updated_at` bor).
+- **Mavjud baza (oldingi versiya):** `sql/migration_v4_onboarding.sql` ni ishga tushiring.
+- Namuna ma’lumot: `sql/seed.sql` (ixtiyoriy).
+
+## 3. `.env`
+
+`.env.example` ni nusxalab `.env` qiling:
+
+| O‘zgaruvchi | Ma’nosi |
+|-------------|---------|
+| `TELEGRAM_BOT_TOKEN` | @BotFather |
+| `SUPABASE_URL` | Supabase API URL |
+| `SUPABASE_KEY` | **service_role** secret |
+| `MINI_APP_URL` | Mini app **https://** manzili |
+
+## 4. O‘rnatish va ishga tushirish
 
 ```bash
 cd telegram_market_bot
 python -m venv .venv
 ```
 
-**Windows (PowerShell):**
+Windows (PowerShell):
 
 ```powershell
 .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
-```
-
-**macOS / Linux:**
-
-```bash
-source .venv/bin/activate
-pip install -r requirements.txt
+python main.py
 ```
 
 Python **3.10+** tavsiya etiladi.
 
-## 5. Botni ishga tushirish
+## Xavfsizlik
 
-```bash
-python main.py
-```
-
-Konsolda `Bot ishga tushmoqda...` degan yozuvdan keyin Telegram'da botingizga yozing.
-
-## Premium funksiyalar (qisqa)
-
-- **Inline tugmalar:** sotuvchiga yozish, saqlash, yana variantlar, filtr/tavsiya.
-- **Qidiruv:** avvalo **3 ta** eng mos natija, keyin «Yana variantlar?» (**Ha** / **Yo'q**).
-- **Do'kon tartibi:** `vip` → `pro` → `free`; `is_featured=true` bo'lganlar o'z guruhida yuqorida.
-- **⭐ Saqlash:** `user_favorites` jadvali (`migration_v2_premium.sql` yoki yangi `schema.sql`).
-
-## Admin buyruqlar (faqat `ADMIN_TELEGRAM_IDS`)
-
-| Buyruq | Vazifasi |
-|--------|----------|
-| `/admin` | Foydalanuvchilar, do'konlar, mahsulotlar, qidiruvlar soni |
-| `/add_shop` | Yangi do'kon (buyruqni argumentssiz yuboring — format chiqadi) |
-| `/add_product` | Yangi mahsulot |
-| `/feature_shop` | ⭐ Tavsiya etiladi yoqish/o'chirish |
-| `/set_sub` yoki `/set_subscription` | `free` / `pro` / `vip` |
-
-## Namuna: foydalanuvchi oqimi (o'zbekcha)
-
-1. `/start` — salom, maslahatlar va pastki tugmalar.
-2. Matn: `qizga sovg'a kerak` — dastlab 3 ta mahsulot + tugmalar; ko'proq bo'lsa **Ha, yana variantlar**.
-3. `/shops` — do'konlar (VIP / tavsiya belgilari bilan).
-4. `/products` — so'nggi mahsulotlar + tugmalar.
-5. `/help` — buyruqlar va misollar.
-
-## Xavfsizlik qisqacha
-
-- `.env` ni git'ga qo'shmang.
-- `service_role` kalitini faqat serverda saqlang.
-- OpenAI faqat foydalanuvchi matnidan **qidiruv parametrlarini** olish uchun ishlatiladi; mahsulotlar faqat bazadan olinadi.
+- `.env` ni git’ga qo‘shmang.
+- `SUPABASE_KEY` faqat serverda saqlang.
 
 ## Muammolar
 
+- **Bot ishga tushmaydi, MINI_APP_URL xato:** manzil `https://` bilan boshlanishi kerak.
 - **Supabase xatoliklari:** `SUPABASE_URL` / `SUPABASE_KEY` (service_role) ni tekshiring.
-- **Hech narsa topilmaydi:** `seed.sql` ishlaganini va mahsulotlar `is_active = true` ekanini tekshiring.
-- **Saqlash ishlamaydi:** `migration_v2_premium.sql` (yoki `user_favorites` jadvali) ishlatilganini tekshiring.
-- **OpenAI ishlamasa:** bot avtomatik ravishda oddiy kalit so'zlarga o'tadi (`ai.py` ichidagi fallback).
+- **Mini ilova ochilmaydagi:** BotFather’da domen tasdiqlanganmi va URL bir xilmi.
 
-## Keyingi qadamlar (ixtiyoriy)
+## Eslatma
 
-- Sotuvchilar uchun mahsulot qo'shish (Telegram orqali yoki mini-admin).
-- `get_shop_by_id` dan foydalanib, bitta do'kon kartochkasi ko'rsatish.
-- Narxlarni filtrlash qoidalarini kengaytirish.
+`app/admin_handlers.py`, `callbacks.py`, `seller_flow.py`, `ai.py` fayllari repozitoriyda saqlanishi mumkin, lekin **joriy `bot.py` ularni ulanmaydi** — barcha bozor funksiyalari mini ilovaga ko‘chirilgan.

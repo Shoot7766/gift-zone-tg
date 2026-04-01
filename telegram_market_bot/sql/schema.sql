@@ -4,19 +4,38 @@
 -- UUID uchun (Supabase odatda yoqilgan)
 create extension if not exists "pgcrypto";
 
--- Foydalanuvchilar (Telegram profili)
+-- Foydalanuvchilar (Telegram profili + bot orqali ro'yxatdan o'tish)
 create table if not exists public.users (
   id uuid primary key default gen_random_uuid(),
   telegram_id bigint unique not null,
   username text,
   first_name text,
   last_name text,
+  phone_number text,
   role text not null default 'customer',
+  is_registered boolean not null default false,
   created_at timestamptz default now(),
+  updated_at timestamptz default now(),
   constraint users_role_check check (role in ('customer', 'seller', 'admin'))
 );
 
 create index if not exists idx_users_telegram_id on public.users (telegram_id);
+
+create or replace function public.touch_users_updated_at()
+returns trigger
+language plpgsql
+as $$
+begin
+  new.updated_at := now();
+  return new;
+end;
+$$;
+
+drop trigger if exists users_touch_updated_at on public.users;
+create trigger users_touch_updated_at
+  before update on public.users
+  for each row
+  execute function public.touch_users_updated_at();
 
 -- Do'konlar
 create table if not exists public.shops (

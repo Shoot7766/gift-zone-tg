@@ -5,10 +5,12 @@
 -- truncate public.search_logs, public.products, public.shops, public.users cascade;
 
 -- Do'kon egalari (Telegram ID lar — namuna)
-insert into public.users (id, telegram_id, username, first_name, last_name, role) values
-  ('11111111-1111-4111-8111-111111111101', 900000001, 'gulmarket_owner', 'Malika', 'Karimova', 'seller'),
-  ('22222222-2222-4222-8222-222222222202', 900000002, 'giftbox_uz', 'Jasur', 'Toshmatov', 'seller'),
-  ('33333333-3333-4333-8333-333333333303', 900000003, 'partyfun_owner', 'Nodira', 'Yusupova', 'seller')
+insert into public.users (
+  id, telegram_id, username, first_name, last_name, phone_number, role, is_registered
+) values
+  ('11111111-1111-4111-8111-111111111101', 900000001, 'gulmarket_owner', 'Malika', 'Karimova', '+998901111111', 'seller', true),
+  ('22222222-2222-4222-8222-222222222202', 900000002, 'giftbox_uz', 'Jasur', 'Toshmatov', '+998902222222', 'seller', true),
+  ('33333333-3333-4333-8333-333333333303', 900000003, 'partyfun_owner', 'Nodira', 'Yusupova', '+998903333333', 'seller', true)
 on conflict (telegram_id) do nothing;
 
 -- Do'konlar (VIP / Pro / Free namuna — premium tartibni sinash uchun)

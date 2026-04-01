@@ -1,5 +1,5 @@
 """
-Telegram marketplace assistant — entry point.
+Gift Zone — Telegram kirish boti (ro'yxatdan o'tish + mini ilovaga yo'naltirish).
 """
 
 import logging
@@ -16,7 +16,6 @@ def main() -> None:
         format=LOG_FORMAT,
         stream=sys.stdout,
     )
-    # kamroq shovqin: httpx va supabase
     logging.getLogger("httpx").setLevel(logging.WARNING)
     logging.getLogger("httpcore").setLevel(logging.WARNING)
 

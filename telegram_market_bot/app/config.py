@@ -2,6 +2,7 @@
 
 import os
 from pathlib import Path
+from urllib.parse import urlparse
 
 from dotenv import load_dotenv
 
@@ -12,29 +13,36 @@ load_dotenv(_env_path)
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
 SUPABASE_URL = os.getenv("SUPABASE_URL", "").strip()
 SUPABASE_KEY = os.getenv("SUPABASE_KEY", "").strip()
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "").strip()
 
-# Search / AI tuning
-OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini").strip()
-PRODUCT_SEARCH_LIMIT = int(os.getenv("PRODUCT_SEARCH_LIMIT", "10"))
+# Telegram Mini App HTTPS manzili (@BotFather → Bot Settings → Menu Button / Mini App)
+MINI_APP_URL = os.getenv("MINI_APP_URL", "").strip()
 
-# Admin Telegram ID lar (vergul bilan): masalan 123456789,987654321
+# Admin Telegram ID lar (ixtiyoriy — boshqa modullar uchun saqlanadi)
 _raw_admins = os.getenv("ADMIN_TELEGRAM_IDS", "").strip()
 ADMIN_TELEGRAM_IDS: set[int] = set()
 for part in _raw_admins.replace(" ", "").split(","):
     if part.isdigit():
         ADMIN_TELEGRAM_IDS.add(int(part))
 
-# Qidiruv natijasida birinchi xabarda ko'rsatiladigan mahsulotlar soni
+# Eski modullar (ai.py, seller_flow) uchun ixtiyoriy — bot ishga tushirishda talab qilinmaydi
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "").strip()
+OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini").strip()
+PRODUCT_SEARCH_LIMIT = int(os.getenv("PRODUCT_SEARCH_LIMIT", "10"))
 SEARCH_INITIAL_SHOW = int(os.getenv("SEARCH_INITIAL_SHOW", "3"))
 SEARCH_MORE_BATCH = int(os.getenv("SEARCH_MORE_BATCH", "7"))
-
-# True bo'lsa, sotuvchi yaratgan do'kon darhol tasdiqlangan bo'ladi (moderatsiyasiz)
 AUTO_APPROVE_SHOPS = os.getenv("AUTO_APPROVE_SHOPS", "false").strip().lower() in (
     "1",
     "true",
     "yes",
 )
+
+
+def _is_https_url(url: str) -> bool:
+    try:
+        p = urlparse(url)
+        return p.scheme == "https" and bool(p.netloc)
+    except Exception:
+        return False
 
 
 def validate_config() -> list[str]:
@@ -46,6 +54,8 @@ def validate_config() -> list[str]:
         missing.append("SUPABASE_URL")
     if not SUPABASE_KEY:
         missing.append("SUPABASE_KEY")
-    if not OPENAI_API_KEY:
-        missing.append("OPENAI_API_KEY")
+    if not MINI_APP_URL:
+        missing.append("MINI_APP_URL")
+    elif not _is_https_url(MINI_APP_URL):
+        missing.append("MINI_APP_URL (https://... bo‘lishi kerak)")
     return missing

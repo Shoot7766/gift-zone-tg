@@ -45,6 +45,15 @@ def sort_products_by_shop_tier(products: list[dict[str, Any]]) -> list[dict[str,
     return [p for _, p in indexed]
 
 
+def user_registration_complete(row: dict[str, Any] | None) -> bool:
+    """Telefon va rol to‘ldirilgan bo‘lsa — ro‘yxatdan o‘tgan."""
+    if not row:
+        return False
+    phone = (row.get("phone_number") or "").strip()
+    role = row.get("role")
+    return bool(phone) and role in ("customer", "seller", "admin")
+
+
 def get_user_by_telegram_id(telegram_id: int) -> dict[str, Any] | None:
     sb = get_supabase()
     try:
@@ -82,6 +91,7 @@ def create_user_with_role(
                     "first_name": first_name,
                     "last_name": last_name,
                     "role": role,
+                    "is_registered": False,
                 }
             )
             .execute()
@@ -90,6 +100,83 @@ def create_user_with_role(
             return ins.data[0]
     except Exception as e:
         logger.exception("create_user_with_role: %s", e)
+    return None
+
+
+def insert_full_registration(
+    telegram_id: int,
+    username: str | None,
+    first_name: str | None,
+    last_name: str | None,
+    phone_number: str,
+    role: str,
+) -> dict[str, Any] | None:
+    """Yangi foydalanuvchi: telefon + rol (faqat mijoz / sotuvchi)."""
+    if role not in ("customer", "seller"):
+        return None
+    phone = (phone_number or "").strip()
+    if not phone:
+        return None
+    sb = get_supabase()
+    try:
+        ins = (
+            sb.table("users")
+            .insert(
+                {
+                    "telegram_id": telegram_id,
+                    "username": username,
+                    "first_name": first_name,
+                    "last_name": last_name,
+                    "phone_number": phone,
+                    "role": role,
+                    "is_registered": True,
+                }
+            )
+            .execute()
+        )
+        if ins.data:
+            return ins.data[0]
+    except Exception as e:
+        logger.exception("insert_full_registration: %s", e)
+    return None
+
+
+def update_user_phone(telegram_id: int, phone_number: str) -> dict[str, Any] | None:
+    row = get_user_by_telegram_id(telegram_id)
+    if not row:
+        return None
+    phone = (phone_number or "").strip()
+    if not phone:
+        return None
+    merged = {**row, "phone_number": phone}
+    reg = user_registration_complete(merged)
+    sb = get_supabase()
+    try:
+        sb.table("users").update(
+            {"phone_number": phone, "is_registered": reg}
+        ).eq("id", row["id"]).execute()
+        return get_user_by_telegram_id(telegram_id)
+    except Exception as e:
+        logger.exception("update_user_phone: %s", e)
+    return None
+
+
+def update_user_role_for_registration(telegram_id: int, role: str) -> dict[str, Any] | None:
+    if role not in ("customer", "seller"):
+        return None
+    row = get_user_by_telegram_id(telegram_id)
+    if not row:
+        return None
+    merged = {**row, "role": role}
+    reg = user_registration_complete(merged)
+    sb = get_supabase()
+    try:
+        sb.table("users").update({"role": role, "is_registered": reg}).eq(
+            "id", row["id"]
+        ).execute()
+        return get_user_by_telegram_id(telegram_id)
+    except Exception as e:
+        logger.exception("update_user_role_for_registration: %s", e)
     return None
 
 
