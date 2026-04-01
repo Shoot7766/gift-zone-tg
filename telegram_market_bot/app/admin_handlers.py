@@ -31,6 +31,15 @@ async def cmd_admin(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         db.count_products(),
         db.count_search_logs(),
     )
+    pending = db.list_pending_shops(12)
+    pend_lines = ""
+    if pending:
+        pend_lines = "\n<b>⏳ Tasdiq kutilayotgan do‘konlar:</b>\n"
+        for sh in pending:
+            pend_lines += f"• <code>{sh.get('id')}</code> — {sh.get('name')}\n"
+    else:
+        pend_lines = "\n<i>Tasdiq kutilayotgan do‘kon yo‘q.</i>\n"
+
     text = (
         "<b>📊 Admin paneli</b>\n"
         "<code>────────────────────</code>\n"
@@ -38,6 +47,8 @@ async def cmd_admin(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         f"🏪 Do'konlar: <b>{s}</b>\n"
         f"🎁 Mahsulotlar: <b>{p}</b>\n"
         f"🔎 Qidiruvlar (jami): <b>{l}</b>\n"
+        f"{pend_lines}\n"
+        "<code>/approve_shop &lt;uuid&gt;</code> — do‘konni tasdiqlash"
     )
     await update.message.reply_html(text)
 
@@ -67,11 +78,9 @@ async def cmd_add_shop(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         await update.message.reply_html("😕 Birinchi qism — egasining Telegram raqami (faqat raqam).")
         return
     owner_tid = int(tid_s)
-    user_row = db.get_or_create_user_from_telegram(
+    user_row = db.ensure_seller_user_for_admin(
         telegram_id=owner_tid,
         username=owner_u,
-        first_name=None,
-        last_name=None,
     )
     if not user_row:
         await update.message.reply_html("😕 Foydalanuvchini yaratib bo'lmadi.")
@@ -84,6 +93,7 @@ async def cmd_add_shop(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         owner_telegram_username=owner_u,
         subscription_type="free",
         is_featured=False,
+        is_approved=True,
     )
     if row:
         await update.message.reply_html(
@@ -192,6 +202,35 @@ async def cmd_feature_shop(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         )
     else:
         await update.message.reply_html("😕 Yangilab bo'lmadi.")
+
+
+async def cmd_approve_shop(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if not update.effective_user or not update.message:
+        return
+    if not is_admin_telegram(update.effective_user.id):
+        await update.message.reply_html("<b>⛔</b> Ruxsat yo‘q.")
+        return
+    args = context.args or []
+    if not args:
+        await update.message.reply_html(
+            "<b>✅ /approve_shop</b>\n\n"
+            "<code>/approve_shop &lt;do'kon_uuid&gt;</code>\n\n"
+            "UUID ni /admin ro‘yxatidan oling."
+        )
+        return
+    sid = args[0].strip()
+    shop = db.get_shop_by_id(sid)
+    if not shop:
+        shop = db.find_shop_by_name_substring(sid)
+    if not shop:
+        await update.message.reply_html("😕 Do‘kon topilmadi.")
+        return
+    if db.set_shop_approved(str(shop["id"]), True):
+        await update.message.reply_html(
+            f"✅ <b>{shop.get('name')}</b> do‘koni <b>tasdiqlandi</b> — endi barcha mijozlarga ko‘rinadi."
+        )
+    else:
+        await update.message.reply_html("😕 Yangilanmadi.")
 
 
 async def cmd_set_subscription(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:

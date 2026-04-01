@@ -45,36 +45,34 @@ def sort_products_by_shop_tier(products: list[dict[str, Any]]) -> list[dict[str,
     return [p for _, p in indexed]
 
 
-def get_or_create_user_from_telegram(
-    telegram_id: int,
-    username: str | None,
-    first_name: str | None,
-    last_name: str | None,
-) -> dict[str, Any] | None:
-    """Upsert Telegram user; return user row."""
+def get_user_by_telegram_id(telegram_id: int) -> dict[str, Any] | None:
     sb = get_supabase()
     try:
-        existing = (
+        r = (
             sb.table("users")
             .select("*")
             .eq("telegram_id", telegram_id)
             .limit(1)
             .execute()
         )
-        if existing.data:
-            row = existing.data[0]
-            sb.table("users").update(
-                {
-                    "username": username,
-                    "first_name": first_name,
-                    "last_name": last_name,
-                }
-            ).eq("id", row["id"]).execute()
-            row["username"] = username
-            row["first_name"] = first_name
-            row["last_name"] = last_name
-            return row
+        if r.data:
+            return r.data[0]
+    except Exception as e:
+        logger.exception("get_user_by_telegram_id: %s", e)
+    return None
 
+
+def create_user_with_role(
+    telegram_id: int,
+    username: str | None,
+    first_name: str | None,
+    last_name: str | None,
+    role: str,
+) -> dict[str, Any] | None:
+    if role not in ("customer", "seller", "admin"):
+        return None
+    sb = get_supabase()
+    try:
         ins = (
             sb.table("users")
             .insert(
@@ -83,7 +81,7 @@ def get_or_create_user_from_telegram(
                     "username": username,
                     "first_name": first_name,
                     "last_name": last_name,
-                    "role": "customer",
+                    "role": role,
                 }
             )
             .execute()
@@ -91,7 +89,77 @@ def get_or_create_user_from_telegram(
         if ins.data:
             return ins.data[0]
     except Exception as e:
-        logger.exception("get_or_create_user_from_telegram: %s", e)
+        logger.exception("create_user_with_role: %s", e)
+    return None
+
+
+def update_user_profile(
+    telegram_id: int,
+    username: str | None,
+    first_name: str | None,
+    last_name: str | None,
+) -> dict[str, Any] | None:
+    row = get_user_by_telegram_id(telegram_id)
+    if not row:
+        return None
+    sb = get_supabase()
+    try:
+        sb.table("users").update(
+            {
+                "username": username,
+                "first_name": first_name,
+                "last_name": last_name,
+            }
+        ).eq("id", row["id"]).execute()
+        row["username"] = username
+        row["first_name"] = first_name
+        row["last_name"] = last_name
+        return row
+    except Exception as e:
+        logger.exception("update_user_profile: %s", e)
+    return None
+
+
+def get_or_create_user_from_telegram(
+    telegram_id: int,
+    username: str | None,
+    first_name: str | None,
+    last_name: str | None,
+) -> dict[str, Any] | None:
+    """
+    Faqat allaqachon ro'yxatdan o'tgan foydalanuvchi (/start da rol tanlagan).
+    Yangi foydalanuvchi uchun None — avval rol tanlash kerak.
+    """
+    return update_user_profile(telegram_id, username, first_name, last_name)
+
+
+def ensure_seller_user_for_admin(
+    telegram_id: int,
+    username: str | None,
+) -> dict[str, Any] | None:
+    """Admin do'kon qo'shganda: foydalanuvchi bo'lmasa sotuvchi sifatida yaratiladi."""
+    row = get_user_by_telegram_id(telegram_id)
+    if row:
+        return row
+    return create_user_with_role(telegram_id, username, None, None, "seller")
+
+
+def _shop_approved(shop: dict[str, Any]) -> bool:
+    return shop.get("is_approved") is True
+
+
+def filter_public_products(products: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return [p for p in products if _shop_approved(_shop_from_product(p))]
+
+
+def get_product_by_id(product_id: str) -> dict[str, Any] | None:
+    sb = get_supabase()
+    try:
+        r = sb.table("products").select("*").eq("id", product_id).limit(1).execute()
+        if r.data:
+            return r.data[0]
+    except Exception as e:
+        logger.exception("get_product_by_id: %s", e)
     return None
 
 
@@ -114,15 +182,13 @@ def _sort_shops_row(s: dict[str, Any]) -> tuple[int, int, str]:
     return (tier, feat, created)
 
 
-def list_shops(limit: int = 20) -> list[dict[str, Any]]:
+def list_shops(limit: int = 20, *, approved_only: bool = True) -> list[dict[str, Any]]:
     sb = get_supabase()
     try:
-        r = (
-            sb.table("shops")
-            .select("*")
-            .limit(min(limit * 2, 100))
-            .execute()
-        )
+        q = sb.table("shops").select("*")
+        if approved_only:
+            q = q.eq("is_approved", True)
+        r = q.limit(min(limit * 2, 100)).execute()
         rows = r.data or []
         rows.sort(key=_sort_shops_row)
         return rows[:limit]
@@ -142,7 +208,7 @@ def list_latest_products(limit: int = 10) -> list[dict[str, Any]]:
             .limit(min(limit * 3, 50))
             .execute()
         )
-        rows = sort_products_by_shop_tier(r.data or [])
+        rows = filter_public_products(sort_products_by_shop_tier(r.data or []))
         return rows[:limit]
     except Exception as e:
         logger.exception("list_latest_products: %s", e)
@@ -208,9 +274,10 @@ def search_products(
             collected.extend(run_ilike_column("name", pat, lim))
             collected.extend(run_ilike_column("description", pat, lim))
 
-        merged = _dedupe_preserve_order(collected)
-        ranked = sort_products_by_shop_tier(merged)
-        return ranked[:lim]
+        merged = filter_public_products(
+            sort_products_by_shop_tier(_dedupe_preserve_order(collected))
+        )
+        return merged[:lim]
     except Exception as e:
         logger.exception("search_products: %s", e)
         return []
@@ -229,7 +296,7 @@ def get_products_by_ids(ids: list[str]) -> list[dict[str, Any]]:
             .eq("is_active", True)
             .execute()
         )
-        data = r.data or []
+        data = filter_public_products(r.data or [])
         by_id = {str(x["id"]): x for x in data}
         return [by_id[i] for i in ids if i in by_id]
     except Exception as e:
@@ -252,7 +319,7 @@ def list_more_products_from_shop(
             .limit(limit + 2)
             .execute()
         )
-        rows = r.data or []
+        rows = filter_public_products(r.data or [])
         if exclude_product_id:
             rows = [x for x in rows if str(x.get("id")) != exclude_product_id]
         rows = sort_products_by_shop_tier(rows)
@@ -351,10 +418,14 @@ def insert_shop(
     owner_telegram_username: str | None,
     subscription_type: str = "free",
     is_featured: bool = False,
+    *,
+    is_approved: bool = False,
+    logo_url: str | None = None,
+    banner_url: str | None = None,
 ) -> dict[str, Any] | None:
     sb = get_supabase()
     try:
-        row = {
+        row: dict[str, Any] = {
             "owner_user_id": owner_user_id,
             "name": name,
             "description": description or "",
@@ -362,7 +433,12 @@ def insert_shop(
             "owner_telegram_username": owner_telegram_username,
             "subscription_type": subscription_type,
             "is_featured": is_featured,
+            "is_approved": is_approved,
         }
+        if logo_url is not None:
+            row["logo_url"] = logo_url
+        if banner_url is not None:
+            row["banner_url"] = banner_url
         r = sb.table("shops").insert(row).execute()
         if r.data:
             return r.data[0]
@@ -379,6 +455,7 @@ def insert_product(
     category: str | None,
     keywords: str | None,
     stock: int = 0,
+    image_url: str | None = None,
 ) -> dict[str, Any] | None:
     sb = get_supabase()
     try:
@@ -392,6 +469,8 @@ def insert_product(
             "stock": stock,
             "is_active": True,
         }
+        if image_url:
+            row["image_url"] = image_url.strip()
         r = sb.table("products").insert(row).execute()
         if r.data:
             return r.data[0]
@@ -423,17 +502,92 @@ def set_shop_subscription(shop_id: str, subscription_type: str) -> bool:
         return False
 
 
+def set_shop_approved(shop_id: str, approved: bool) -> bool:
+    sb = get_supabase()
+    try:
+        sb.table("shops").update({"is_approved": approved}).eq("id", shop_id).execute()
+        return True
+    except Exception as e:
+        logger.exception("set_shop_approved: %s", e)
+        return False
+
+
+def list_pending_shops(limit: int = 25) -> list[dict[str, Any]]:
+    sb = get_supabase()
+    try:
+        r = (
+            sb.table("shops")
+            .select("*")
+            .eq("is_approved", False)
+            .order("created_at", desc=True)
+            .limit(limit)
+            .execute()
+        )
+        return r.data or []
+    except Exception as e:
+        logger.exception("list_pending_shops: %s", e)
+        return []
+
+
+def get_shop_by_owner_user_id(owner_user_id: str) -> dict[str, Any] | None:
+    sb = get_supabase()
+    try:
+        r = (
+            sb.table("shops")
+            .select("*")
+            .eq("owner_user_id", owner_user_id)
+            .limit(1)
+            .execute()
+        )
+        if r.data:
+            return r.data[0]
+    except Exception as e:
+        logger.exception("get_shop_by_owner_user_id: %s", e)
+    return None
+
+
+def list_products_for_seller_shop(shop_id: str, limit: int = 50) -> list[dict[str, Any]]:
+    sb = get_supabase()
+    try:
+        r = (
+            sb.table("products")
+            .select("*")
+            .eq("shop_id", shop_id)
+            .order("created_at", desc=True)
+            .limit(limit)
+            .execute()
+        )
+        return r.data or []
+    except Exception as e:
+        logger.exception("list_products_for_seller_shop: %s", e)
+        return []
+
+
+def set_product_active_for_shop(product_id: str, shop_id: str, active: bool) -> bool:
+    sb = get_supabase()
+    try:
+        sb.table("products").update({"is_active": active}).eq("id", product_id).eq(
+            "shop_id", shop_id
+        ).execute()
+        return True
+    except Exception as e:
+        logger.exception("set_product_active_for_shop: %s", e)
+        return False
+
+
+def shop_owned_by(shop_id: str, owner_user_uuid: str) -> bool:
+    shop = get_shop_by_id(shop_id)
+    if not shop:
+        return False
+    return str(shop.get("owner_user_id") or "") == owner_user_uuid
+
+
 def get_or_create_user_by_telegram_id_only(
     telegram_id: int,
     username: str | None = None,
 ) -> dict[str, Any] | None:
     """Admin: sotuvchi uchun minimal foydalanuvchi."""
-    return get_or_create_user_from_telegram(
-        telegram_id=telegram_id,
-        username=username,
-        first_name=None,
-        last_name=None,
-    )
+    return ensure_seller_user_for_admin(telegram_id, username)
 
 
 def favorited_map_for_user(

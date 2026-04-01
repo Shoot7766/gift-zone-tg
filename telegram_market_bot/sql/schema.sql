@@ -11,8 +11,9 @@ create table if not exists public.users (
   username text,
   first_name text,
   last_name text,
-  role text default 'customer',
-  created_at timestamptz default now()
+  role text not null default 'customer',
+  created_at timestamptz default now(),
+  constraint users_role_check check (role in ('customer', 'seller', 'admin'))
 );
 
 create index if not exists idx_users_telegram_id on public.users (telegram_id);
@@ -25,6 +26,9 @@ create table if not exists public.shops (
   description text,
   owner_telegram_username text,
   city text,
+  logo_url text,
+  banner_url text,
+  is_approved boolean not null default false,
   subscription_type text default 'free',
   is_featured boolean default false,
   created_at timestamptz default now(),
@@ -45,6 +49,7 @@ create table if not exists public.products (
   price numeric,
   category text,
   keywords text,
+  image_url text,
   stock integer default 0,
   is_active boolean default true,
   created_at timestamptz default now()

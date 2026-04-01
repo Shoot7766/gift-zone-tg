@@ -54,6 +54,10 @@ Vercel loyihani **Next.js** emas, oddiy statik sayt deb olgan.
 |------|--------|
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase Project URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | **anon public** kalit (service_role emas!) — brauzerda maxfiy kalit ishlatsangiz, Supabase «Forbidden use of secret API key in browser» beradi. |
+| `TELEGRAM_BOT_TOKEN` | Mini app `/api/me` uchun (initData tekshiruvi). Brauzerga chiqarmang. |
+| `SUPABASE_SERVICE_ROLE_KEY` | `/api/me` orqali `users.role` o‘qish (faqat server). |
+| `ADMIN_TELEGRAM_IDS` | Ixtiyoriy: admin uchun pastki navigatsiya (vergul bilan ID lar). |
+| `NEXT_PUBLIC_TELEGRAM_BOT_USERNAME` | Sotuvchi panelidagi bot havolalari (`username`, @siz). |
 
 3. **Save** dan keyin **Redeploy** (env o‘zgarishlari eski deployda bo‘lmasligi mumkin).
 

@@ -3,7 +3,7 @@
 import secrets
 from typing import Any
 
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup
 from app.utils import uuid_to_callback_hex
 
 
@@ -149,6 +149,17 @@ def shops_nav_keyboard() -> InlineKeyboardMarkup:
     )
 
 
+def role_pick_keyboard() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        [
+            [
+                InlineKeyboardButton("🛍 Mijoz", callback_data="role:customer"),
+                InlineKeyboardButton("🏪 Do‘kon egasi", callback_data="role:seller"),
+            ],
+        ]
+    )
+
+
 def start_welcome_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         [
@@ -161,3 +172,45 @@ def start_welcome_keyboard() -> InlineKeyboardMarkup:
             ],
         ]
     )
+
+
+def customer_reply_keyboard() -> ReplyKeyboardMarkup:
+    return ReplyKeyboardMarkup(
+        [
+            [
+                KeyboardButton("🎁 Sovg‘a topish"),
+                KeyboardButton("🛍 Mahsulotlar"),
+            ],
+            [
+                KeyboardButton("🏪 Do‘konlar"),
+                KeyboardButton("⭐ Saqlanganlar"),
+            ],
+            [KeyboardButton("📖 Yordam")],
+        ],
+        resize_keyboard=True,
+        input_field_placeholder="Masalan: qizga sovg‘a…",
+    )
+
+
+def seller_reply_keyboard() -> ReplyKeyboardMarkup:
+    return ReplyKeyboardMarkup(
+        [
+            [
+                KeyboardButton("🏪 Do‘konim"),
+                KeyboardButton("➕ Mahsulot qo‘shish"),
+            ],
+            [
+                KeyboardButton("📦 Mahsulotlarim"),
+                KeyboardButton("📢 E’lon berish"),
+            ],
+            [
+                KeyboardButton("👤 Profilim"),
+                KeyboardButton("🛒 Bozorga o‘tish"),
+            ],
+        ],
+        resize_keyboard=True,
+    )
+
+
+def remove_reply_keyboard() -> ReplyKeyboardMarkup:
+    return ReplyKeyboardMarkup([], resize_keyboard=True)

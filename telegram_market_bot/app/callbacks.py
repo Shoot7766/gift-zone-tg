@@ -17,11 +17,60 @@ from app.utils import (
 logger = logging.getLogger(__name__)
 
 
+async def _handle_role_pick(
+    update: Update, context: ContextTypes.DEFAULT_TYPE, data: str
+) -> None:
+    q = update.callback_query
+    if not q or not q.from_user or not q.message:
+        return
+    role = data.split(":", 1)[-1].strip()
+    if role not in ("customer", "seller"):
+        await q.answer()
+        return
+    existing = db.get_user_by_telegram_id(q.from_user.id)
+    if existing:
+        await q.answer("Siz allaqachon ro‘yxatdan o‘tgansiz.", show_alert=True)
+        return
+    row = db.create_user_with_role(
+        telegram_id=q.from_user.id,
+        username=q.from_user.username,
+        first_name=q.from_user.first_name,
+        last_name=q.from_user.last_name,
+        role=role,
+    )
+    await q.answer()
+    try:
+        await q.message.edit_reply_markup(reply_markup=None)
+    except Exception:
+        pass
+    if not row:
+        await q.message.reply_html("😕 Ro‘yxatdan o‘tishda xato. /start ni qayta yuboring.")
+        return
+    from app.keyboards import customer_reply_keyboard, seller_reply_keyboard
+
+    if role == "customer":
+        await q.message.reply_html(
+            "<b>🛍 Siz mijoz sifatida tanlandingiz.</b>\n\n"
+            "Mahsulotlarni qidiring yoki pastdagi tugmalardan foydalaning.",
+            reply_markup=customer_reply_keyboard(),
+        )
+    else:
+        await q.message.reply_html(
+            "<b>🏪 Siz do‘kon egasi sifatida tanlandingiz.</b>\n\n"
+            "<b>🏪 Do‘konim</b> tugmasi bilan do‘kon yarating, keyin mahsulot qo‘shing.",
+            reply_markup=seller_reply_keyboard(),
+        )
+
+
 async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     q = update.callback_query
     if not q or not q.data or not q.message:
         return
     data = q.data
+
+    if data.startswith("role:"):
+        await _handle_role_pick(update, context, data)
+        return
 
     if data == "m:yes":
         await _more_search_yes(update, context)
@@ -113,14 +162,14 @@ async def _toggle_favorite(q, context: ContextTypes.DEFAULT_TYPE, data: str) -> 
     if not pid or not q.from_user:
         await q.answer("Xatolik.", show_alert=True)
         return
-    user_row = db.get_or_create_user_from_telegram(
+    user_row = db.update_user_profile(
         telegram_id=q.from_user.id,
         username=q.from_user.username,
         first_name=q.from_user.first_name,
         last_name=q.from_user.last_name,
     )
     if not user_row:
-        await q.answer("Profilni saqlab bo'lmadi.", show_alert=True)
+        await q.answer("Avval /start — rolni tanlang.", show_alert=True)
         return
     uid = str(user_row["id"])
     ok, now_fav = db.toggle_favorite(uid, pid)
@@ -150,7 +199,7 @@ async def _shop_more(q, context: ContextTypes.DEFAULT_TYPE, data: str) -> None:
         return
     if not q.from_user or not q.message:
         return
-    user_row = db.get_or_create_user_from_telegram(
+    user_row = db.update_user_profile(
         telegram_id=q.from_user.id,
         username=q.from_user.username,
         first_name=q.from_user.first_name,
@@ -203,7 +252,7 @@ async def _more_search_yes(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 
     if not q.from_user:
         return
-    user_row = db.get_or_create_user_from_telegram(
+    user_row = db.update_user_profile(
         telegram_id=q.from_user.id,
         username=q.from_user.username,
         first_name=q.from_user.first_name,

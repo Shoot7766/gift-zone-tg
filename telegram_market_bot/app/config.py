@@ -29,6 +29,13 @@ for part in _raw_admins.replace(" ", "").split(","):
 SEARCH_INITIAL_SHOW = int(os.getenv("SEARCH_INITIAL_SHOW", "3"))
 SEARCH_MORE_BATCH = int(os.getenv("SEARCH_MORE_BATCH", "7"))
 
+# True bo'lsa, sotuvchi yaratgan do'kon darhol tasdiqlangan bo'ladi (moderatsiyasiz)
+AUTO_APPROVE_SHOPS = os.getenv("AUTO_APPROVE_SHOPS", "false").strip().lower() in (
+    "1",
+    "true",
+    "yes",
+)
+
 
 def validate_config() -> list[str]:
     """Return list of missing required variable names."""

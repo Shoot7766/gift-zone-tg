@@ -8,11 +8,20 @@ from telegram import Update
 from telegram.ext import ContextTypes
 
 from app import ai, config, db
+from app.admin_handlers import is_admin_telegram
 from app.keyboards import (
+    customer_reply_keyboard,
     register_shop_tokens,
+    role_pick_keyboard,
     search_results_keyboard,
+    seller_reply_keyboard,
     shops_nav_keyboard,
     start_welcome_keyboard,
+)
+from app.seller_flow import (
+    handle_customer_menu_text,
+    handle_seller_menu_text,
+    handle_seller_wizard_message,
 )
 from app.utils import (
     format_products_reply,
@@ -26,10 +35,11 @@ logger = logging.getLogger(__name__)
 HELP_REPLY_HTML = (
     "<b>📌 Buyruqlar</b>\n"
     "<code>────────────────────</code>\n"
-    "/start — boshlash\n"
+    "/start — boshlash (rol tanlash)\n"
     "/help — bu yordam\n"
     "/shops — do'konlar (premium tartibda)\n"
-    "/products — yangi mahsulotlar\n\n"
+    "/products — yangi mahsulotlar\n"
+    "<i>Sotuvchi:</i> <code>/mahsulot_off</code> — e'lonni yashirish\n\n"
     "<b>Qanday qidirish?</b>\n"
     "Oddiy gap yozing — AI so'rovingizni tushunadi, men esa bazadan "
     "mos mahsulotlarni chiqaraman.\n\n"
@@ -42,31 +52,83 @@ HELP_REPLY_HTML = (
 )
 
 
+async def send_role_main_menu(
+    update: Update, context: ContextTypes.DEFAULT_TYPE, user_row: dict[str, Any]
+) -> None:
+    if not update.effective_user or not update.message:
+        return
+    u = update.effective_user
+    if is_admin_telegram(u.id):
+        await update.message.reply_html(
+            "<b>👑 Administrator</b>\n\n"
+            "/admin — statistika va kutilayotgan do‘konlar\n"
+            "/approve_shop — do‘konni tasdiqlash\n"
+            "/feature_shop — tavsiya (oldingi kabi)\n\n"
+            "Mijozlar kabi qidiruvdan ham foydalanishingiz mumkin.",
+            reply_markup=customer_reply_keyboard(),
+        )
+        return
+    role = user_row.get("role") or "customer"
+    if role == "seller":
+        await update.message.reply_html(
+            "<b>🏪 Siz do‘kon egasi sifatida tanlandingiz.</b>\n\n"
+            "Pastdagi menyudan boshqaring — do‘kon, mahsulot va e’lonlar.",
+            reply_markup=seller_reply_keyboard(),
+        )
+        return
+    header = format_welcome_header(u.first_name)
+    text = (
+        f"{header}\n\n"
+        "<b>🛍 Siz mijoz sifatida tanlandingiz.</b>\n"
+        "• Sovg‘a va gul bo‘yicha <b>aqlli qidiruv</b>\n"
+        "• <b>VIP / Pro</b> do‘konlar ustun\n"
+        "• Sotuvchiga bir tugma bilan yozish\n\n"
+        "<b>💡 Masalan yozing:</b>\n"
+        "<i>«qizga sovg‘a kerak»</i>\n\n"
+        "Pastdagi tugmalar yoki /help."
+    )
+    await update.message.reply_html(
+        text,
+        reply_markup=customer_reply_keyboard(),
+    )
+
+
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if not update.effective_user or not update.message:
         return
     u = update.effective_user
-    db.get_or_create_user_from_telegram(
-        telegram_id=u.id,
-        username=u.username,
-        first_name=u.first_name,
-        last_name=u.last_name,
-    )
-    header = format_welcome_header(u.first_name)
-    text = (
-        f"{header}\n\n"
-        "<b>✨ Nima qila olaman?</b>\n"
-        "• Sovg'a va gul bo'yicha <b>aqlli qidiruv</b>\n"
-        "• <b>VIP / Pro</b> do'konlarni ustun ko'rsatish\n"
-        "• Sotuvchiga bir tugma bilan yozish\n\n"
-        "<b>💡 Masalan shunday yozing:</b>\n"
-        "<i>«qizga sovg'a kerak»</i> yoki <i>«gullar kerak»</i>\n\n"
-        "Pastdagi tugmalar yoki /help — qulay navigatsiya."
-    )
-    await update.message.reply_html(
-        text,
-        reply_markup=start_welcome_keyboard(),
-    )
+    args = context.args or []
+
+    row = db.get_user_by_telegram_id(u.id)
+    if row:
+        db.update_user_profile(
+            telegram_id=u.id,
+            username=u.username,
+            first_name=u.first_name,
+            last_name=u.last_name,
+        )
+        row = db.get_user_by_telegram_id(u.id)
+
+    if row is None:
+        await update.message.reply_html(
+            "<b>Siz kim sifatida davom etmoqchisiz?</b>",
+            reply_markup=role_pick_keyboard(),
+        )
+        return
+
+    if args and args[0].lower() in ("seller", "sell", "sotuvchi"):
+        if row.get("role") != "seller":
+            await update.message.reply_html(
+                "Bu havola faqat <b>do‘kon egalari</b> uchun. Siz mijoz sifatidasiz."
+            )
+            return
+        await update.message.reply_html(
+            "<b>🏪 Sotuvchi menyusi</b>",
+            reply_markup=seller_reply_keyboard(),
+        )
+        return
+
+    await send_role_main_menu(update, context, row)
 
 
 async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -110,7 +172,7 @@ async def cmd_products(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
             "Keyinroq qayta tekshiring yoki qidiruv bilan yozing."
         )
         return
-    user_row = db.get_or_create_user_from_telegram(
+    user_row = db.update_user_profile(
         telegram_id=u.id,
         username=u.username,
         first_name=u.first_name,
@@ -144,6 +206,41 @@ def _interpreted_summary(interp: dict[str, Any]) -> str:
         return str(interp)
 
 
+async def cmd_mahsulot_off(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if not update.effective_user or not update.message:
+        return
+    u = update.effective_user
+    user_row = db.update_user_profile(
+        telegram_id=u.id,
+        username=u.username,
+        first_name=u.first_name,
+        last_name=u.last_name,
+    )
+    if not user_row or user_row.get("role") != "seller":
+        await update.message.reply_html("Bu buyruq faqat <b>sotuvchilar</b> uchun.")
+        return
+    args = context.args or []
+    if not args:
+        await update.message.reply_html(
+            "Format: <code>/mahsulot_off mahsulot_uuid</code>\n\n"
+            "UUID ni <b>📦 Mahsulotlarim</b> ro‘yxatidan nusxalang."
+        )
+        return
+    pid = args[0].strip()
+    prod = db.get_product_by_id(pid)
+    if not prod:
+        await update.message.reply_html("Mahsulot topilmadi.")
+        return
+    sid = str(prod.get("shop_id") or "")
+    if not db.shop_owned_by(sid, str(user_row["id"])):
+        await update.message.reply_html("Bu mahsulot sizning do‘koningizga tegishli emas.")
+        return
+    if db.set_product_active_for_shop(pid, sid, False):
+        await update.message.reply_html("✅ Mahsulot <b>faolsizlantirildi</b> (e’lon yashirildi).")
+    else:
+        await update.message.reply_html("😕 Yangilanmadi.")
+
+
 async def handle_text_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if not update.effective_user or not update.message or not update.message.text:
         return
@@ -152,13 +249,39 @@ async def handle_text_message(update: Update, context: ContextTypes.DEFAULT_TYPE
     if raw.startswith("/"):
         return
 
-    user_row = db.get_or_create_user_from_telegram(
+    if await handle_seller_wizard_message(update, context):
+        return
+
+    user_row = db.update_user_profile(
         telegram_id=u.id,
         username=u.username,
         first_name=u.first_name,
         last_name=u.last_name,
     )
-    user_id = str(user_row["id"]) if user_row else None
+    if not user_row:
+        user_row = db.get_user_by_telegram_id(u.id)
+    if not user_row:
+        await update.message.reply_html(
+            "👋 Avval <b>/start</b> buyrug‘ini yuboring va rolni tanlang."
+        )
+        return
+
+    role = user_row.get("role") or "customer"
+
+    if role == "seller":
+        if await handle_seller_menu_text(update, context, user_row):
+            return
+        await update.message.reply_html(
+            "Menyudan tugmani tanlang yoki mahsulot qo‘shish bosqichidagi savollarga javob bering.\n"
+            "Bozorda qidirish uchun: <b>🛒 Bozorga o‘tish</b>."
+        )
+        return
+
+    if role == "customer":
+        if await handle_customer_menu_text(update, context, user_row):
+            return
+
+    user_id = str(user_row["id"])
 
     await update.message.chat.send_action(action="typing")
     interp = ai.interpret_uzbek_request(raw)

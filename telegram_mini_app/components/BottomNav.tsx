@@ -2,18 +2,37 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, LayoutGrid, Store, Heart } from "lucide-react";
+import {
+  Home,
+  LayoutGrid,
+  Store,
+  Heart,
+  Briefcase,
+  Package,
+  Building2,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAppRole } from "@/components/RoleProvider";
 
-const items = [
+const customerItems = [
   { href: "/", label: "Bosh sahifa", icon: Home },
   { href: "/products", label: "Mahsulotlar", icon: LayoutGrid },
   { href: "/shops", label: "Do'konlar", icon: Store },
   { href: "/favorites", label: "Saqlanganlar", icon: Heart },
 ] as const;
 
+const sellerItems = [
+  { href: "/", label: "Bozor", icon: Home },
+  { href: "/seller", label: "Panel", icon: Briefcase },
+  { href: "/seller/shop", label: "Do'konim", icon: Building2 },
+  { href: "/seller/products", label: "Mahsulotlar", icon: Package },
+] as const;
+
 export function BottomNav() {
   const pathname = usePathname();
+  const { role, loading } = useAppRole();
+  const isSeller = !loading && (role === "seller" || role === "admin");
+  const items = isSeller ? sellerItems : customerItems;
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-border/50 bg-background/95 pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_32px_-12px_rgba(0,0,0,0.12)] backdrop-blur-xl dark:shadow-[0_-8px_32px_-12px_rgba(0,0,0,0.4)]">
@@ -25,7 +44,7 @@ export function BottomNav() {
               : pathname === href || pathname.startsWith(href + "/");
           return (
             <Link
-              key={href}
+              key={href + label}
               href={href}
               className={cn(
                 "flex min-w-0 flex-1 flex-col items-center gap-0.5 rounded-2xl py-2.5 text-[10px] font-bold transition-all duration-200",
@@ -41,7 +60,10 @@ export function BottomNav() {
                 )}
               >
                 <Icon
-                  className={cn("h-5 w-5", active && "text-amber-700 dark:text-amber-300")}
+                  className={cn(
+                    "h-5 w-5",
+                    active && "text-amber-700 dark:text-amber-300"
+                  )}
                   strokeWidth={active ? 2.5 : 2}
                 />
               </span>

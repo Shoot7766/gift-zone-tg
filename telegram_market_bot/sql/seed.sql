@@ -14,7 +14,7 @@ on conflict (telegram_id) do nothing;
 -- Do'konlar (VIP / Pro / Free namuna — premium tartibni sinash uchun)
 insert into public.shops (
   id, owner_user_id, name, description, owner_telegram_username, city,
-  subscription_type, is_featured
+  subscription_type, is_featured, is_approved
 ) values
   (
     '44444444-4444-4444-8444-444444444401',
@@ -24,6 +24,7 @@ insert into public.shops (
     'gulmarket_owner',
     'Toshkent',
     'vip',
+    true,
     true
   ),
   (
@@ -34,7 +35,8 @@ insert into public.shops (
     'giftbox_uz',
     'Samarqand',
     'pro',
-    false
+    false,
+    true
   ),
   (
     '66666666-6666-4666-8666-666666666603',
@@ -44,7 +46,8 @@ insert into public.shops (
     'partyfun_owner',
     'Toshkent',
     'free',
-    false
+    false,
+    true
   )
 on conflict (id) do nothing;
 

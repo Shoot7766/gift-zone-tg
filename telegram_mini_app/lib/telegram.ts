@@ -19,6 +19,7 @@ declare global {
         BackButton: { show: () => void; hide: () => void; onClick: (cb: () => void) => void };
         MainButton: { text: string; show: () => void; hide: () => void };
         themeParams: Record<string, string | undefined>;
+        initData?: string;
         initDataUnsafe?: { user?: TelegramUser };
         version: string;
         platform: string;

@@ -9,6 +9,7 @@ from app.admin_handlers import (
     cmd_add_product,
     cmd_add_shop,
     cmd_admin,
+    cmd_approve_shop,
     cmd_feature_shop,
     cmd_set_subscription,
 )
@@ -32,8 +33,10 @@ def build_application() -> Application:
     app.add_handler(CommandHandler("help", cmd_help))
     app.add_handler(CommandHandler("shops", cmd_shops))
     app.add_handler(CommandHandler("products", cmd_products))
+    app.add_handler(CommandHandler("mahsulot_off", cmd_mahsulot_off))
 
     app.add_handler(CommandHandler("admin", cmd_admin))
+    app.add_handler(CommandHandler("approve_shop", cmd_approve_shop))
     app.add_handler(CommandHandler("add_shop", cmd_add_shop))
     app.add_handler(CommandHandler("add_product", cmd_add_product))
     app.add_handler(CommandHandler("feature_shop", cmd_feature_shop))
