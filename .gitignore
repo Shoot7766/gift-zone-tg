@@ -1,0 +1,26 @@
+# Maxfiy fayllar
+.env
+.env.local
+.env.*.local
+**/.env
+**/.env.local
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Node / Next
+node_modules/
+.next/
+out/
+dist/
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+*.log
