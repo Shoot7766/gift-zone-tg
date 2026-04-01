@@ -84,6 +84,10 @@ sql/                 # Supabase migratsiya (anon o‘qish + rasm ustunlari)
 
 Hozircha **localStorage** (`gift-zone-mini-favorites`). Keyinroq `user_favorites` jadvali bilan sinxron qilish mumkin.
 
+## Vercel ishlamasa
+
+Batafsil: **[VERCEL.md](./VERCEL.md)** — Root Directory, env, RLS.
+
 ## Savol-javob
 
 **Nima uchun xato: “Ma'lumot yuklanmadi”?**  

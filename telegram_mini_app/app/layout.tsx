@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import Script from "next/script";
 import { DM_Sans, Fraunces } from "next/font/google";
+import { EnvMissingBanner } from "@/components/EnvMissingBanner";
 import { Providers } from "@/components/Providers";
 import { Shell } from "@/components/Shell";
 import "./globals.css";
@@ -38,6 +39,7 @@ export default function RootLayout({
   return (
     <html lang="uz" className={`${dmSans.variable} ${fraunces.variable}`}>
       <body className="font-sans">
+        <EnvMissingBanner />
         <Script
           src="https://telegram.org/js/telegram-web-app.js"
           strategy="beforeInteractive"
