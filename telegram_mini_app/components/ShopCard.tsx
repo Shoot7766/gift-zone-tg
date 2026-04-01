@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { MapPin } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { TrustStrip } from "@/components/TrustStrip";
 
 type Props = { shop: Shop; className?: string };
 
@@ -52,12 +53,13 @@ export function ShopCard({ shop, className }: Props) {
             </div>
             <div className="min-w-0 flex-1">
               <div className="mb-1 flex flex-wrap items-center gap-1">
+                {vip && <Badge variant="vip">VIP</Badge>}
                 {vip && <Badge variant="vip">{"Top do'kon"}</Badge>}
                 {pro && !vip && (
                   <Badge variant="secondary">Pro</Badge>
                 )}
                 {shop.is_featured && (
-                  <Badge variant="accent">Tavsiya</Badge>
+                  <Badge variant="accent">Tavsiya etiladi</Badge>
                 )}
               </div>
               <p className="truncate font-display text-base font-semibold">
@@ -72,10 +74,11 @@ export function ShopCard({ shop, className }: Props) {
             </div>
           </div>
         </div>
-        <CardContent className="p-4 pt-3">
+        <CardContent className="space-y-3 p-4 pt-3">
           <p className="line-clamp-2 text-sm text-muted-foreground">
             {shop.description || "Tavsif qo'shilmoqda."}
           </p>
+          <TrustStrip dense />
         </CardContent>
       </Card>
     </Link>

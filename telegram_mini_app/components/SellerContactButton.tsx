@@ -8,9 +8,16 @@ type Props = {
   username: string | null | undefined;
   className?: string;
   size?: "default" | "lg";
+  /** Karta uchun qisqa matn */
+  compactLabel?: boolean;
 };
 
-export function SellerContactButton({ username, className, size = "default" }: Props) {
+export function SellerContactButton({
+  username,
+  className,
+  size = "default",
+  compactLabel,
+}: Props) {
   if (!username?.trim()) {
     return (
       <Button variant="outline" disabled className={className} size={size === "lg" ? "lg" : "default"}>
@@ -27,8 +34,8 @@ export function SellerContactButton({ username, className, size = "default" }: P
       className={className}
       onClick={() => openTelegramUser(u)}
     >
-      <MessageCircle className="h-4 w-4" />
-      Sotuvchiga yozish
+      <MessageCircle className="h-4 w-4 shrink-0" />
+      {compactLabel ? "📩 Yozish" : "📩 Sotuvchiga yozish"}
     </Button>
   );
 }

@@ -6,6 +6,7 @@ import { ShopCard } from "@/components/ShopCard";
 import { EmptyState } from "@/components/EmptyState";
 import { Skeleton } from "@/components/ui/skeleton";
 import { fetchShops } from "@/lib/supabase/queries";
+import { mergeShopsWithMock } from "@/lib/mockCatalog";
 import type { Shop } from "@/types";
 import { Store } from "lucide-react";
 
@@ -15,8 +16,8 @@ export default function ShopsPage() {
 
   useEffect(() => {
     fetchShops()
-      .then(setShops)
-      .catch(() => setShops([]))
+      .then((s) => setShops(mergeShopsWithMock(s, 4)))
+      .catch(() => setShops(mergeShopsWithMock([], 4)))
       .finally(() => setLoading(false));
   }, []);
 

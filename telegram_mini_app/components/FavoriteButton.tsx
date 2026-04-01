@@ -9,9 +9,11 @@ import { isFavoriteId, toggleFavoriteId } from "@/lib/favorites";
 type Props = {
   productId: string;
   className?: string;
+  /** Kartochkada matnli tugma */
+  showLabel?: boolean;
 };
 
-export function FavoriteButton({ productId, className }: Props) {
+export function FavoriteButton({ productId, className, showLabel }: Props) {
   const [on, setOn] = useState(false);
 
   useEffect(() => {
@@ -22,9 +24,10 @@ export function FavoriteButton({ productId, className }: Props) {
     <Button
       type="button"
       variant="outline"
-      size="icon"
+      size={showLabel ? "default" : "icon"}
       className={cn(
         "rounded-xl border-2 transition-colors",
+        showLabel && "gap-2",
         on && "border-rose-400/60 bg-rose-50 text-rose-600 dark:bg-rose-950/40 dark:text-rose-300",
         className
       )}
@@ -35,9 +38,10 @@ export function FavoriteButton({ productId, className }: Props) {
       }}
     >
       <Heart
-        className={cn("h-5 w-5", on && "fill-current")}
+        className={cn(showLabel ? "h-4 w-4" : "h-5 w-5", on && "fill-current")}
         strokeWidth={2}
       />
+      {showLabel && <span>⭐ Saqlash</span>}
     </Button>
   );
 }

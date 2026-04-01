@@ -47,7 +47,7 @@ export function AppHeader({
           type="button"
           variant="outline"
           size="sm"
-          className="shrink-0 rounded-xl text-xs"
+          className="shrink-0 rounded-xl px-2.5 text-[11px] font-bold sm:text-xs"
           onClick={() => {
             try {
               closeMiniApp();
@@ -56,7 +56,7 @@ export function AppHeader({
             }
           }}
         >
-          Botga qaytish
+          ⬅️ Botga qaytish
         </Button>
       </div>
     </header>

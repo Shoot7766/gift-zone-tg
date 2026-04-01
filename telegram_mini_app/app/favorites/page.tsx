@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { AppHeader } from "@/components/AppHeader";
 import { ProductCard } from "@/components/ProductCard";
 import { EmptyState } from "@/components/EmptyState";
+import { ProductGridSkeleton } from "@/components/ProductGridSkeleton";
 import { Button } from "@/components/ui/button";
 import { fetchProductsByIds } from "@/lib/supabase/queries";
 import { getFavoriteIds } from "@/lib/favorites";
@@ -47,17 +48,15 @@ export default function FavoritesPage() {
           Tanlangan mahsulotlar qurilmangizda saqlanadi (Telegram ichida).
         </p>
         {loading ? (
-          <p className="text-sm text-muted-foreground">Yuklanmoqda…</p>
+          <ProductGridSkeleton count={4} />
         ) : list.length === 0 ? (
           <EmptyState
             icon={Heart}
-            title={"Hozircha bo'sh"}
-            description={
-              "Mahsulot kartochkasidagi yurakcha tugmasini bosing — bu yerda ko'rinadi."
-            }
+            title="😕 Saqlangan mahsulotlar yo‘q"
+            description="👉 Mahsulotlarni saqlab qo‘ying — kartochkadagi ⭐ Saqlash tugmasidan foydalaning."
             action={
-              <Button asChild variant="accent" className="rounded-xl">
-                <Link href="/products">{"Mahsulotlarga o'tish"}</Link>
+              <Button asChild variant="accent" className="rounded-2xl font-bold">
+                <Link href="/">Bosh sahifadan tanlang</Link>
               </Button>
             }
           />

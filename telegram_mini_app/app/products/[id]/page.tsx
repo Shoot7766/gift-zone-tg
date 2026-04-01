@@ -16,6 +16,7 @@ import {
   fetchProductById,
   fetchRelatedProducts,
 } from "@/lib/supabase/queries";
+import { getDemoProductById, MOCK_PRODUCTS } from "@/lib/mockCatalog";
 import type { Product } from "@/types";
 import { Store } from "lucide-react";
 
@@ -30,12 +31,17 @@ export default function ProductDetailPage() {
     let ok = true;
     (async () => {
       try {
-        const p = await fetchProductById(id);
+        const p = (await fetchProductById(id)) ?? getDemoProductById(id);
         if (!ok) return;
         setProduct(p);
         if (p) {
-          const r = await fetchRelatedProducts(p, 6);
-          if (ok) setRelated(r);
+          if (id.startsWith("demo-p-")) {
+            const r = MOCK_PRODUCTS.filter((x) => x.id !== p.id).slice(0, 6);
+            if (ok) setRelated(r);
+          } else {
+            const r = await fetchRelatedProducts(p, 6);
+            if (ok) setRelated(r);
+          }
         }
       } finally {
         if (ok) setLoading(false);

@@ -12,6 +12,8 @@ import {
   fetchShopById,
   fetchProductsByShop,
 } from "@/lib/supabase/queries";
+import { getDemoShopById, MOCK_PRODUCTS } from "@/lib/mockCatalog";
+import { TrustStrip } from "@/components/TrustStrip";
 import type { Product, Shop } from "@/types";
 import { MapPin } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -27,12 +29,17 @@ export default function ShopDetailPage() {
     let ok = true;
     (async () => {
       try {
-        const s = await fetchShopById(id);
+        const s = (await fetchShopById(id)) ?? getDemoShopById(id);
         if (!ok) return;
         setShop(s);
         if (s) {
-          const p = await fetchProductsByShop(id);
-          if (ok) setProducts(p);
+          if (id.startsWith("demo-shop-")) {
+            const p = MOCK_PRODUCTS.filter((x) => x.shop_id === id);
+            if (ok) setProducts(p);
+          } else {
+            const p = await fetchProductsByShop(id);
+            if (ok) setProducts(p);
+          }
         }
       } finally {
         if (ok) setLoading(false);
@@ -111,8 +118,11 @@ export default function ShopDetailPage() {
             )}
           </div>
           <div className="mt-4 flex flex-wrap justify-center gap-2">
+            {vip && <Badge variant="vip">VIP</Badge>}
             {vip && <Badge variant="vip">Top do&apos;kon</Badge>}
-            {shop.is_featured && <Badge variant="accent">Tavsiya</Badge>}
+            {shop.is_featured && (
+              <Badge variant="accent">Tavsiya etiladi</Badge>
+            )}
             {shop.subscription_type === "pro" && !vip && (
               <Badge variant="secondary">Pro</Badge>
             )}
@@ -129,6 +139,9 @@ export default function ShopDetailPage() {
           <p className="mt-3 text-center text-sm leading-relaxed text-muted-foreground">
             {shop.description || "Tavsif qo'shilmagan."}
           </p>
+          <div className="mt-4 w-full max-w-sm">
+            <TrustStrip />
+          </div>
           <div className="mt-5 w-full max-w-sm">
             <SellerContactButton
               username={shop.owner_telegram_username}

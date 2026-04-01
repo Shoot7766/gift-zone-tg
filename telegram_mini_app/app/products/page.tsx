@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, Suspense } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { AppHeader } from "@/components/AppHeader";
 import { SearchBar } from "@/components/SearchBar";
@@ -9,6 +10,7 @@ import { ProductCard } from "@/components/ProductCard";
 import { FilterBar, type SortOption } from "@/components/FilterBar";
 import { EmptyState } from "@/components/EmptyState";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
 import { fetchCategories, fetchProducts } from "@/lib/supabase/queries";
 import type { Product } from "@/types";
 import { PackageOpen } from "lucide-react";
@@ -56,27 +58,47 @@ function ProductsInner() {
     <>
       <AppHeader title="Mahsulotlar" showBack backHref="/" />
       <main className="mx-auto max-w-lg space-y-5 px-4 pb-8 pt-4">
-        <SearchBar value={q} onChange={setQ} placeholder="Qidiruv…" />
+        <SearchBar
+          value={q}
+          onChange={setQ}
+          placeholder="Masalan: qizga sovg‘a"
+        />
         <CategoryChips
           categories={cats}
           active={activeCat}
           onSelect={setActiveCat}
         />
         <FilterBar sort={sort} onSortChange={setSort} />
-        <p className="text-xs text-muted-foreground">
-          {loading ? "Yuklanmoqda…" : `Jami: ${list.length} ta natija`}
-        </p>
+        {!loading && (
+          <p className="text-sm font-semibold text-foreground">
+            {list.length} ta natija topildi
+          </p>
+        )}
         {loading ? (
           <div className="grid grid-cols-2 gap-3">
             {[1, 2, 3, 4, 5, 6].map((i) => (
-              <Skeleton key={i} className="aspect-[4/5] rounded-2xl" />
+              <div
+                key={i}
+                className="overflow-hidden rounded-2xl border border-border/40 bg-card/40"
+              >
+                <Skeleton className="aspect-[3/4] w-full rounded-none" />
+                <div className="space-y-2 p-3">
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-1/2" />
+                </div>
+              </div>
             ))}
           </div>
         ) : list.length === 0 ? (
           <EmptyState
             icon={PackageOpen}
-            title="Mahsulot topilmadi"
-            description="Boshqa kategoriya yoki kalit so'z bilan qidirib ko'ring."
+            title="😕 Hozircha mahsulotlar yo‘q"
+            description="👉 Bosh sahifadan tanlang yoki qidiruvdan foydalaning."
+            action={
+              <Button asChild variant="accent" className="rounded-2xl font-bold">
+                <Link href="/">Bosh sahifaga</Link>
+              </Button>
+            }
           />
         ) : (
           <div className="grid grid-cols-2 gap-3">
