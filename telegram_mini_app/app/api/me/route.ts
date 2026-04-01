@@ -2,6 +2,8 @@ import { createClient } from "@supabase/supabase-js";
 import crypto from "crypto";
 import { NextResponse } from "next/server";
 
+import type { RoleSource } from "@/lib/roleSource";
+
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
@@ -42,25 +44,44 @@ function verifyTelegramInitData(
 
 /**
  * Telegram WebApp initData ni tekshiradi va Supabase users jadvalidan rol qaytaradi.
- * SUPABASE_SERVICE_ROLE_KEY bo‘lmasa — xavfsiz default: customer.
+ * SUPABASE_SERVICE_ROLE_KEY bo‘lmasa — xavfsiz default: customer + roleSource.
  */
 export async function POST(request: Request) {
   try {
     const body = (await request.json()) as { initData?: string };
     const initData = body.initData ?? "";
     const botToken = process.env.TELEGRAM_BOT_TOKEN?.trim() ?? "";
-    if (!initData || !botToken) {
-      return NextResponse.json({ role: "customer" as const });
+
+    if (!initData) {
+      return NextResponse.json({
+        role: "customer" as const,
+        roleSource: "no_telegram_auth" as const,
+      });
     }
+
+    if (!botToken) {
+      return NextResponse.json({
+        role: "customer" as const,
+        roleSource: "missing_bot_token" as const,
+      });
+    }
+
     const verified = verifyTelegramInitData(initData, botToken);
     if (!verified) {
-      return NextResponse.json({ error: "invalid_init_data" }, { status: 401 });
+      return NextResponse.json(
+        {
+          error: "invalid_init_data",
+          roleSource: "invalid_init_data" as const,
+        },
+        { status: 401 }
+      );
     }
 
     if (parseAdminTelegramIds().has(verified.telegramId)) {
       return NextResponse.json({
         role: "admin" as const,
         telegramId: verified.telegramId,
+        roleSource: "admin_env" as const,
       });
     }
 
@@ -71,6 +92,7 @@ export async function POST(request: Request) {
       return NextResponse.json({
         role: "customer" as const,
         telegramId: verified.telegramId,
+        roleSource: "fallback_no_service_key" as const,
       });
     }
 
@@ -85,6 +107,7 @@ export async function POST(request: Request) {
       return NextResponse.json({
         role: "customer" as const,
         telegramId: verified.telegramId,
+        roleSource: "fallback_no_user_row" as const,
       });
     }
 
@@ -96,8 +119,12 @@ export async function POST(request: Request) {
       role,
       userId: data.id as string,
       telegramId: verified.telegramId,
+      roleSource: "database" as const,
     });
   } catch {
-    return NextResponse.json({ role: "customer" as const });
+    return NextResponse.json({
+      role: "customer" as const,
+      roleSource: "server_error" as const,
+    });
   }
 }
