@@ -24,3 +24,6 @@ dist/
 .DS_Store
 Thumbs.db
 *.log
+
+# Telegram bot — bitta polling instance
+telegram_market_bot/.telegram_bot_single.lock
